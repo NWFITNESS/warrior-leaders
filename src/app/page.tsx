@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Logo } from '@/components/Logo'
 import { getPublicSettings } from '@/lib/public-data'
 
 export const revalidate = 60
@@ -9,14 +10,19 @@ export default async function Home() {
 
   return (
     <main className="public">
-      <header className="stack-sm" style={{ paddingTop: 24 }}>
-        <span className="eyebrow">{settings?.venue ?? 'Northern Warrior'}</span>
-        <h1 style={{ fontSize: 'clamp(2.4rem, 9vw, 4rem)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-          The Warrior <span style={{ color: 'var(--gold-hi)' }}>Leaders</span>
-        </h1>
-        {date && (
-          <p className="muted">{date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
-        )}
+      <header className="stack" style={{ justifyItems: 'center', textAlign: 'center', paddingTop: 16 }}>
+        <Logo width={420} />
+        <div className="stack-sm" style={{ justifyItems: 'center' }}>
+          <h1 className="wordmark" style={{ fontSize: 'clamp(2rem, 8vw, 3.2rem)' }}>
+            The Warrior <b>Leaders</b>
+          </h1>
+          {date && (
+            <p className="muted" style={{ fontSize: '1.1rem' }}>
+              {date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {settings?.venue ? ` · ${settings.venue}` : ''}
+            </p>
+          )}
+        </div>
       </header>
 
       <section className="card card-gold stack-sm">

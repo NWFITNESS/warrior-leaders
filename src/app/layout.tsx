@@ -1,13 +1,23 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Rajdhani } from 'next/font/google'
+import { League_Spartan } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const rajdhani = Rajdhani({ subsets: ['latin'], variable: '--font-rajdhani', weight: ['500', '600', '700'] })
+// Northern Warrior brand font — same as the website and the competitions logo.
+const leagueSpartan = League_Spartan({
+  subsets: ['latin'],
+  variable: '--font-league-spartan',
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: { default: 'The Warrior Leaders', template: '%s · The Warrior Leaders' },
-  description: 'Live leaderboard for The Warrior Leaders competition at Northern Warrior.',
+  description: 'Live leaderboard for The Warrior Leaders competition by Northern Warrior Competitions.',
+  icons: {
+    icon: [{ url: '/icon-32.png', sizes: '32x32', type: 'image/png' }, { url: '/icon-256.png', sizes: '256x256', type: 'image/png' }],
+    apple: [{ url: '/apple-icon.png', sizes: '180x180' }],
+  },
+  openGraph: { images: ['/nw-competitions-logo-900.png'] },
 }
 
 export const viewport: Viewport = {
@@ -19,8 +29,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-GB">
-      <body className={`${inter.variable} ${rajdhani.variable}`}>{children}</body>
+    // Font variable must sit on <html>: globals.css reads it from :root.
+    <html lang="en-GB" className={leagueSpartan.variable}>
+      <body>{children}</body>
     </html>
   )
 }

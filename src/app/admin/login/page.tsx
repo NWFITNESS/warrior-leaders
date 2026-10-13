@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { signIn } from './actions'
+import { Logo } from '@/components/Logo'
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(signIn, { error: '' })
@@ -9,10 +10,11 @@ export default function LoginPage() {
   return (
     <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 16 }}>
       <form action={action} className="card stack" style={{ width: '100%', maxWidth: 380, padding: 28 }}>
-        <div className="stack-sm">
-          <span className="brand">The Warrior Leaders</span>
-          <h1 style={{ fontSize: '1.8rem' }}>Admin sign in</h1>
-          <p className="muted small">Northern Warrior staff only.</p>
+        <div className="stack-sm" style={{ justifyItems: 'center', textAlign: 'center' }}>
+          <Logo width={260} />
+          <span className="eyebrow" style={{ marginTop: 6 }}>The Warrior Leaders</span>
+          <h1 style={{ fontSize: '1.7rem' }}>Admin sign in</h1>
+          <p className="muted small">Sign in with your NWHub staff login.</p>
         </div>
         <label className="field">
           <span>Email</span>

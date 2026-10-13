@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getPublicTeams } from '@/lib/public-data'
+import { Logo } from '@/components/Logo'
 
 export const revalidate = 60
 export const metadata = { title: 'Teams' }
@@ -10,7 +11,8 @@ export default async function TeamsPublic() {
   return (
     <main className="public">
       <header className="stack-sm">
-        <Link href="/" className="brand small">← The Warrior Leaders</Link>
+        <Link href="/" aria-label="The Warrior Leaders home"><Logo width={180} /></Link>
+        <Link href="/" className="small">← The Warrior Leaders</Link>
         <h1>Teams</h1>
         <p className="muted">{teams.length} pairs across {divisions.length} divisions.</p>
       </header>
