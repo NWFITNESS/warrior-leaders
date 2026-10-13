@@ -8,9 +8,9 @@ const ITEMS: { href: string; label: string; soon?: string }[] = [
   { href: '/admin/teams', label: 'Teams & athletes' },
   { href: '/admin/workouts', label: 'Workouts' },
   { href: '/admin/judges', label: 'Judges' },
+  { href: '/admin/heats', label: 'Heats & lanes' },
+  { href: '/admin/scores', label: 'Scores' },
   { href: '/admin/settings', label: 'Settings' },
-  { href: '#', label: 'Heats & lanes', soon: 'Wk 2' },
-  { href: '#', label: 'Scores', soon: 'Wk 3' },
   { href: '#', label: 'Leaderboard', soon: 'Wk 3' },
   { href: '#', label: 'Emails', soon: 'Wk 3' },
 ]

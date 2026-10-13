@@ -129,3 +129,48 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .brand { font-family: var(--f-display); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-hi); }
 .wordmark { font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; line-height: 1; }
 .wordmark b { color: var(--gold-hi); font-weight: 800; }
+
+/* ── Judge app (phone only) ─────────────────────────────────────────────────── */
+.judge { max-width: 520px; margin: 0 auto; min-height: 100vh; padding: 12px 14px calc(24px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; align-content: start; }
+.j-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 5; }
+.j-top .who { font-size: 0.85rem; color: var(--muted); }
+.j-sync { font-size: 0.78rem; font-weight: 600; padding: 3px 10px 2px; border-radius: 999px; white-space: nowrap; }
+.j-sync.ok { background: rgba(34, 197, 94, 0.12); color: var(--ok); }
+.j-sync.wait { background: rgba(245, 158, 11, 0.14); color: var(--warn); }
+.j-sync.bad { background: rgba(239, 68, 68, 0.14); color: var(--bad); }
+.j-big { width: 100%; min-height: 64px; font-size: 1.25rem; }
+.j-name { width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line-2); color: var(--text); border-radius: 12px; padding: 16px 16px 14px; font: inherit; font-size: 1.15rem; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.j-name[aria-pressed='true'] { border-color: var(--gold); background: rgba(150, 119, 5, 0.12); color: var(--gold-hi); }
+.j-code { width: 100%; text-align: center; font-size: 2rem; letter-spacing: 0.5em; padding: 12px 0 10px 0.5em; font-family: var(--f-mono); }
+.j-lane { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--text); text-decoration: none; cursor: pointer; font: inherit; text-align: left; width: 100%; }
+.j-lane.next { border-color: var(--gold); background: rgba(150, 119, 5, 0.08); }
+.j-lane .ln { font-weight: 800; font-size: 1.6rem; text-align: center; color: var(--gold-hi); line-height: 1; }
+.j-lane .ln small { display: block; font-size: 0.62rem; letter-spacing: 0.12em; color: var(--subtle); font-weight: 600; }
+.j-clock { text-align: center; font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 3.2rem; line-height: 1; padding: 6px 0 2px; }
+.j-clock.over { color: var(--bad); }
+.j-clock small { display: block; font-family: var(--f-body); font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--subtle); margin-top: 6px; }
+.j-mv { display: grid; grid-template-columns: 1fr 76px; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 10px 10px 10px 14px; }
+.j-mv.cur { border-color: var(--gold); background: rgba(150, 119, 5, 0.08); }
+.j-mv .nm { font-weight: 700; font-size: 1.15rem; line-height: 1.15; }
+.j-mv .std { font-size: 0.8rem; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+.j-tick { height: 64px; border-radius: 12px; border: 1px solid var(--line-2); background: transparent; color: var(--subtle); font: inherit; font-size: 1.6rem; cursor: pointer; display: grid; place-items: center; font-family: var(--f-mono); }
+.j-mv.cur .j-tick { background: linear-gradient(160deg, var(--gold-hi), var(--gold)); color: #0a0a0a; border: 0; font-size: 2rem; }
+.j-mv.done .j-tick { border-color: rgba(34, 197, 94, 0.45); color: var(--ok); font-size: 0.95rem; cursor: default; }
+.j-mv.done .nm { color: var(--muted); }
+.j-rounds { display: flex; gap: 6px; overflow-x: auto; }
+.j-rounds span { flex: 1; min-width: 56px; text-align: center; border: 1px solid var(--line); border-radius: 8px; padding: 6px 4px 4px; font-size: 0.72rem; color: var(--subtle); }
+.j-rounds span b { display: block; font-family: var(--f-mono); font-size: 0.85rem; color: var(--text); font-weight: 500; }
+.j-rounds span.on { border-color: var(--gold); color: var(--gold-hi); }
+.j-rounds span.done b { color: var(--ok); }
+.j-step { display: grid; grid-template-columns: 64px 1fr 64px; gap: 8px; align-items: center; }
+.j-step button { height: 64px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--text); font-size: 1.8rem; cursor: pointer; }
+.j-step input { height: 64px; text-align: center; font-family: var(--f-mono); font-size: 2rem; }
+.j-result { text-align: center; display: grid; gap: 2px; padding: 6px 0; }
+.j-result b { font-family: var(--f-mono); font-size: 2.4rem; color: var(--gold-hi); font-weight: 500; }
+.j-result small { color: var(--subtle); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; }
+.j-load { display: grid; gap: 8px; }
+.j-load .row-h, .j-load .row-v { display: grid; gap: 8px; align-items: center; }
+.j-load input { text-align: center; font-family: var(--f-mono); font-size: 1.3rem; height: 54px; }
+.j-tabs { display: flex; gap: 6px; }
+.j-tabs button { flex: 1; border: 1px solid var(--line-2); background: transparent; color: var(--muted); border-radius: 10px; padding: 10px 6px 8px; font: inherit; font-weight: 700; cursor: pointer; }
+.j-tabs button[aria-pressed='true'] { border-color: var(--gold); color: var(--gold-hi); background: rgba(150, 119, 5, 0.12); }
