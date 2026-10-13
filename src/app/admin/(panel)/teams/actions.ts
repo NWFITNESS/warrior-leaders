@@ -52,6 +52,7 @@ export async function saveTeam(input: TeamInput): Promise<{ error?: string }> {
 
   await audit(supabase, { actor, action: input.id ? 'team.update' : 'team.create', entity: 'team', entity_id: teamId, after: { ...teamRow, athletes: rows.length } })
   revalidatePath('/admin/teams')
+  revalidatePath('/teams')
   redirect('/admin/teams')
 }
 
@@ -61,6 +62,7 @@ export async function deleteTeam(id: string) {
   await supabase.from('wl_teams').delete().eq('id', id)
   await audit(supabase, { actor, action: 'team.delete', entity: 'team', entity_id: id, before })
   revalidatePath('/admin/teams')
+  revalidatePath('/teams')
   redirect('/admin/teams')
 }
 
@@ -97,6 +99,7 @@ export async function importTeams(rows: ImportRow[], mode: 'skip' | 'update'): P
 
   await audit(supabase, { actor, action: 'team.import', entity: 'team', after: { ...result, errors: result.errors.length } })
   revalidatePath('/admin/teams')
+  revalidatePath('/teams')
   return result
 }
 
