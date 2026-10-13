@@ -6,7 +6,7 @@ export const metadata = { title: 'Import teams' }
 
 export default async function ImportPage() {
   const { supabase } = await requireStaff()
-  const { data: divisions } = await supabase.from('divisions').select('name').order('sort_order')
+  const { data: divisions } = await supabase.from('wl_divisions').select('name').order('sort_order')
   return (
     <>
       <div className="stack-sm">

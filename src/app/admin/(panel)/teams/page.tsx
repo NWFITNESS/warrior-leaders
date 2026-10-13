@@ -8,8 +8,8 @@ export default async function TeamsPage({ searchParams }: { searchParams: Promis
   const { q = '' } = await searchParams
   const { supabase } = await requireStaff()
   const [{ data: divisions }, { data: teams }] = await Promise.all([
-    supabase.from('divisions').select('*').order('sort_order').returns<Division[]>(),
-    supabase.from('teams').select('*, athletes(*)').order('name').returns<Team[]>(),
+    supabase.from('wl_divisions').select('*').order('sort_order').returns<Division[]>(),
+    supabase.from('wl_teams').select('*, athletes:wl_athletes(*)').order('name').returns<Team[]>(),
   ])
 
   const needle = q.trim().toLowerCase()

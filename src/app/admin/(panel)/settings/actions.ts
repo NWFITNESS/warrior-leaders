@@ -31,8 +31,8 @@ export async function saveSettings(_prev: { ok?: boolean; error?: string }, form
     overall_tiebreak: String(formData.get('overall_tiebreak') ?? '').trim(),
     updated_at: new Date().toISOString(),
   }
-  const { data: before } = await supabase.from('competition_settings').select('*').single()
-  const { error } = await supabase.from('competition_settings').update(row).eq('id', 1)
+  const { data: before } = await supabase.from('wl_competition_settings').select('*').single()
+  const { error } = await supabase.from('wl_competition_settings').update(row).eq('id', 1)
   if (error) return { error: error.message }
   await audit(supabase, { actor, action: 'settings.update', entity: 'settings', entity_id: '1', before, after: row })
   revalidatePath('/admin', 'layout')

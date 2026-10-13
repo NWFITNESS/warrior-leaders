@@ -8,11 +8,11 @@ import type { Workout, WorkoutPart } from '@/lib/types'
 
 export async function createWorkout() {
   const { supabase, actor } = await requireStaff()
-  const { data: last } = await supabase.from('workouts').select('number').order('number', { ascending: false }).limit(1).maybeSingle()
+  const { data: last } = await supabase.from('wl_workouts').select('number').order('number', { ascending: false }).limit(1).maybeSingle()
   const number = (last?.number ?? 0) + 1
-  const { data, error } = await supabase.from('workouts').insert({ number, name: `Event ${number}` }).select('id').single()
+  const { data, error } = await supabase.from('wl_workouts').insert({ number, name: `Event ${number}` }).select('id').single()
   if (error) throw new Error(error.message)
-  await supabase.from('workout_parts').insert({ workout_id: data.id, label: 'A', sort_order: 0 })
+  await supabase.from('wl_workout_parts').insert({ workout_id: data.id, label: 'A', sort_order: 0 })
   await audit(supabase, { actor, action: 'workout.create', entity: 'workout', entity_id: data.id })
   redirect(`/admin/workouts/${data.id}`)
 }
@@ -32,9 +32,9 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
   if (!input.name.trim()) return { error: 'Give the workout a name.' }
   if (input.parts.length === 0) return { error: 'A workout needs at least one part.' }
 
-  const { data: before } = await supabase.from('workouts').select('*, workout_parts(*, part_movements(*))').eq('id', input.id).single()
+  const { data: before } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements(*))').eq('id', input.id).single()
 
-  const { error: wErr } = await supabase.from('workouts').update({
+  const { error: wErr } = await supabase.from('wl_workouts').update({
     number: input.number,
     name: input.name.trim(),
     description: input.description || null,
@@ -47,14 +47,14 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
   // Parts: upsert by id (ids are created in the browser so scores keep pointing at the same part),
   // then remove parts that were deleted in the builder.
   const partIds = input.parts.map((p) => p.id)
-  const { data: scoredParts } = await supabase.from('scores').select('part_id').eq('status', 'verified').in('part_id', (before?.workout_parts ?? []).map((p: { id: string }) => p.id))
+  const { data: scoredParts } = await supabase.from('wl_scores').select('part_id').eq('status', 'verified').in('part_id', (before?.workout_parts ?? []).map((p: { id: string }) => p.id))
   const removed = (before?.workout_parts ?? []).filter((p: { id: string }) => !partIds.includes(p.id))
   if (removed.some((p: { id: string }) => scoredParts?.some((s) => s.part_id === p.id))) {
     return { error: 'A part you removed already has verified scores. Keep the part, or delete its scores first.' }
   }
-  if (removed.length) await supabase.from('workout_parts').delete().in('id', removed.map((p: { id: string }) => p.id))
+  if (removed.length) await supabase.from('wl_workout_parts').delete().in('id', removed.map((p: { id: string }) => p.id))
 
-  const { error: pErr } = await supabase.from('workout_parts').upsert(
+  const { error: pErr } = await supabase.from('wl_workout_parts').upsert(
     input.parts.map((p, i) => ({
       id: p.id,
       workout_id: input.id,
@@ -89,10 +89,10 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
         standards: m.standards || null,
       }))
   )
-  const { error: dErr } = await supabase.from('part_movements').delete().in('part_id', partIds).not('id', 'in', `(${allMovements.map((m) => m.id).join(',') || '00000000-0000-0000-0000-000000000000'})`)
+  const { error: dErr } = await supabase.from('wl_part_movements').delete().in('part_id', partIds).not('id', 'in', `(${allMovements.map((m) => m.id).join(',') || '00000000-0000-0000-0000-000000000000'})`)
   if (dErr) return { error: dErr.message }
   if (allMovements.length) {
-    const { error: mErr } = await supabase.from('part_movements').upsert(allMovements)
+    const { error: mErr } = await supabase.from('wl_part_movements').upsert(allMovements)
     if (mErr) return { error: mErr.message }
   }
 
@@ -104,10 +104,14 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
 
 export async function deleteWorkout(id: string) {
   const { supabase, actor } = await requireStaff()
-  const { count } = await supabase.from('scores').select('id, workout_parts!inner(workout_id)', { count: 'exact', head: true }).eq('workout_parts.workout_id', id)
+  const { data: parts } = await supabase.from('wl_workout_parts').select('id').eq('workout_id', id)
+  const partIds = (parts ?? []).map((p) => p.id)
+  const { count } = partIds.length
+    ? await supabase.from('wl_scores').select('id', { count: 'exact', head: true }).in('part_id', partIds)
+    : { count: 0 }
   if (count) throw new Error('This workout already has scores and can’t be deleted.')
-  const { data: before } = await supabase.from('workouts').select('*, workout_parts(*, part_movements(*))').eq('id', id).single()
-  await supabase.from('workouts').delete().eq('id', id)
+  const { data: before } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements(*))').eq('id', id).single()
+  await supabase.from('wl_workouts').delete().eq('id', id)
   await audit(supabase, { actor, action: 'workout.delete', entity: 'workout', entity_id: id, before })
   revalidatePath('/admin/workouts')
   redirect('/admin/workouts')
@@ -115,17 +119,17 @@ export async function deleteWorkout(id: string) {
 
 export async function duplicateWorkout(id: string) {
   const { supabase, actor } = await requireStaff()
-  const { data: src } = await supabase.from('workouts').select('*, workout_parts(*, part_movements(*))').eq('id', id).single()
+  const { data: src } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements(*))').eq('id', id).single()
   if (!src) throw new Error('Workout not found')
-  const { data: last } = await supabase.from('workouts').select('number').order('number', { ascending: false }).limit(1).single()
-  const { data: copy } = await supabase.from('workouts')
+  const { data: last } = await supabase.from('wl_workouts').select('number').order('number', { ascending: false }).limit(1).single()
+  const { data: copy } = await supabase.from('wl_workouts')
     .insert({ number: (last?.number ?? 0) + 1, name: `${src.name} (copy)`, description: src.description, combine_parts: src.combine_parts })
     .select('id').single()
   for (const p of src.workout_parts as (WorkoutPart & { id: string; workout_id: string })[]) {
     const { id: _pid, workout_id: _wid, part_movements, ...rest } = p
-    const { data: np } = await supabase.from('workout_parts').insert({ ...rest, workout_id: copy!.id }).select('id').single()
+    const { data: np } = await supabase.from('wl_workout_parts').insert({ ...rest, workout_id: copy!.id }).select('id').single()
     if (part_movements.length) {
-      await supabase.from('part_movements').insert(
+      await supabase.from('wl_part_movements').insert(
         part_movements.map(({ id: _mid, ...m }) => ({ ...m, part_id: np!.id }))
       )
     }

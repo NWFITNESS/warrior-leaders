@@ -1,12 +1,13 @@
 -- The Warrior Leaders — initial schema
--- Admin (authenticated staff) has full access through RLS.
+-- Lives in the shared Northern Warrior Supabase project, so every object is prefixed wl_.
+-- Admin (active NWHub staff in staff_profiles) has full access through RLS.
 -- Public pages and the judge app read/write through server routes using the service role,
 -- so anon has no direct table access.
 
 create extension if not exists pgcrypto;
 
 -- ── Competition settings (single row) ────────────────────────────────────────
-create table competition_settings (
+create table wl_competition_settings (
   id              int primary key default 1 check (id = 1),
   name            text not null default 'The Warrior Leaders',
   event_date      date not null default '2026-11-07',
@@ -18,10 +19,10 @@ create table competition_settings (
   overall_tiebreak text not null default 'Best placing in the last released event',
   updated_at      timestamptz not null default now()
 );
-insert into competition_settings (id) values (1);
+insert into wl_competition_settings (id) values (1);
 
 -- ── Divisions ────────────────────────────────────────────────────────────────
-create table divisions (
+create table wl_divisions (
   id          uuid primary key default gen_random_uuid(),
   name        text not null unique,
   level       text not null check (level in ('rx', 'scaled')),
@@ -29,27 +30,27 @@ create table divisions (
   sort_order  int not null default 0,
   created_at  timestamptz not null default now()
 );
-insert into divisions (name, level, sex, sort_order) values
+insert into wl_divisions (name, level, sex, sort_order) values
   ('RX Male', 'rx', 'male', 1),
   ('RX Female', 'rx', 'female', 2),
   ('Scaled Male', 'scaled', 'male', 3),
   ('Scaled Female', 'scaled', 'female', 4);
 
--- ── Teams + athletes ─────────────────────────────────────────────────────────
-create table teams (
+-- ── Teams + wl_athletes ─────────────────────────────────────────────────────────
+create table wl_teams (
   id           uuid primary key default gen_random_uuid(),
-  division_id  uuid not null references divisions(id) on delete restrict,
+  division_id  uuid not null references wl_divisions(id) on delete restrict,
   name         text not null,
   bib          int,
   notes        text,
   created_at   timestamptz not null default now(),
   unique (division_id, name)
 );
-create index teams_division_idx on teams(division_id);
+create index wl_teams_division_idx on wl_teams(division_id);
 
-create table athletes (
+create table wl_athletes (
   id          uuid primary key default gen_random_uuid(),
-  team_id     uuid not null references teams(id) on delete cascade,
+  team_id     uuid not null references wl_teams(id) on delete cascade,
   position    int not null default 1,
   first_name  text not null,
   last_name   text not null default '',
@@ -58,10 +59,10 @@ create table athletes (
   is_captain  boolean not null default false,
   created_at  timestamptz not null default now()
 );
-create index athletes_team_idx on athletes(team_id);
+create index wl_athletes_team_idx on wl_athletes(team_id);
 
 -- ── Workouts → parts → movements ─────────────────────────────────────────────
-create table workouts (
+create table wl_workouts (
   id             uuid primary key default gen_random_uuid(),
   number         int not null,
   name           text not null,
@@ -72,9 +73,9 @@ create table workouts (
   updated_at     timestamptz not null default now()
 );
 
-create table workout_parts (
+create table wl_workout_parts (
   id                  uuid primary key default gen_random_uuid(),
-  workout_id          uuid not null references workouts(id) on delete cascade,
+  workout_id          uuid not null references wl_workouts(id) on delete cascade,
   label               text not null default 'A',
   name                text not null default '',
   sort_order          int not null default 0,
@@ -89,11 +90,11 @@ create table workout_parts (
   tiebreak_note       text,
   notes               text
 );
-create index workout_parts_workout_idx on workout_parts(workout_id);
+create index wl_workout_parts_workout_idx on wl_workout_parts(workout_id);
 
-create table part_movements (
+create table wl_part_movements (
   id           uuid primary key default gen_random_uuid(),
-  part_id      uuid not null references workout_parts(id) on delete cascade,
+  part_id      uuid not null references wl_workout_parts(id) on delete cascade,
   sort_order   int not null default 0,
   name         text not null,
   reps         int,
@@ -101,10 +102,10 @@ create table part_movements (
   scaled_load  text,
   standards    text
 );
-create index part_movements_part_idx on part_movements(part_id);
+create index wl_part_movements_part_idx on wl_part_movements(part_id);
 
 -- ── Judges ───────────────────────────────────────────────────────────────────
-create table judges (
+create table wl_judges (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
   role        text not null default 'lane' check (role in ('head', 'lane')),
@@ -115,31 +116,31 @@ create table judges (
 );
 
 -- ── Heats + lanes (week 2) ───────────────────────────────────────────────────
-create table heats (
+create table wl_heats (
   id           uuid primary key default gen_random_uuid(),
-  workout_id   uuid not null references workouts(id) on delete cascade,
+  workout_id   uuid not null references wl_workouts(id) on delete cascade,
   number       int not null,
   start_time   time,
   created_at   timestamptz not null default now(),
   unique (workout_id, number)
 );
 
-create table lane_assignments (
+create table wl_lane_assignments (
   id        uuid primary key default gen_random_uuid(),
-  heat_id   uuid not null references heats(id) on delete cascade,
+  heat_id   uuid not null references wl_heats(id) on delete cascade,
   lane      int not null,
-  team_id   uuid references teams(id) on delete set null,
-  judge_id  uuid references judges(id) on delete set null,
+  team_id   uuid references wl_teams(id) on delete set null,
+  judge_id  uuid references wl_judges(id) on delete set null,
   unique (heat_id, lane)
 );
 
 -- ── Scores (weeks 2–3) ───────────────────────────────────────────────────────
-create table scores (
+create table wl_scores (
   id                  uuid primary key default gen_random_uuid(),
-  part_id             uuid not null references workout_parts(id) on delete cascade,
-  team_id             uuid not null references teams(id) on delete cascade,
-  lane_assignment_id  uuid references lane_assignments(id) on delete set null,
-  judge_id            uuid references judges(id) on delete set null,
+  part_id             uuid not null references wl_workout_parts(id) on delete cascade,
+  team_id             uuid not null references wl_teams(id) on delete cascade,
+  lane_assignment_id  uuid references wl_lane_assignments(id) on delete set null,
+  judge_id            uuid references wl_judges(id) on delete set null,
   status              text not null default 'draft'
                         check (status in ('draft', 'submitted', 'verified', 'appeal', 'rejected')),
   source              text not null default 'judge' check (source in ('judge', 'paper', 'admin')),
@@ -157,22 +158,22 @@ create table scores (
   updated_at          timestamptz not null default now(),
   unique (part_id, team_id)
 );
-create index scores_part_idx on scores(part_id);
+create index wl_scores_part_idx on wl_scores(part_id);
 
-create table score_events (
+create table wl_score_events (
   id          bigint generated always as identity primary key,
-  score_id    uuid not null references scores(id) on delete cascade,
-  judge_id    uuid references judges(id) on delete set null,
+  score_id    uuid not null references wl_scores(id) on delete cascade,
+  judge_id    uuid references wl_judges(id) on delete set null,
   kind        text not null,       -- start, tick, untick, cap, input, submit
   payload     jsonb not null default '{}',
   client_ts   timestamptz,
   server_ts   timestamptz not null default now()
 );
-create index score_events_score_idx on score_events(score_id);
+create index wl_score_events_score_idx on wl_score_events(score_id);
 
-create table appeals (
+create table wl_appeals (
   id           uuid primary key default gen_random_uuid(),
-  score_id     uuid not null references scores(id) on delete cascade,
+  score_id     uuid not null references wl_scores(id) on delete cascade,
   description  text not null,
   status       text not null default 'open' check (status in ('open', 'upheld', 'rejected')),
   resolution   text,
@@ -180,15 +181,15 @@ create table appeals (
   resolved_at  timestamptz
 );
 
-create table releases (
-  part_id      uuid not null references workout_parts(id) on delete cascade,
-  division_id  uuid not null references divisions(id) on delete cascade,
+create table wl_releases (
+  part_id      uuid not null references wl_workout_parts(id) on delete cascade,
+  division_id  uuid not null references wl_divisions(id) on delete cascade,
   released_at  timestamptz not null default now(),
   released_by  text,
   primary key (part_id, division_id)
 );
 
-create table audit_log (
+create table wl_audit_log (
   id          bigint generated always as identity primary key,
   actor       text not null,
   action      text not null,
@@ -199,18 +200,33 @@ create table audit_log (
   reason      text,
   created_at  timestamptz not null default now()
 );
-create index audit_log_created_idx on audit_log(created_at desc);
+create index wl_audit_log_created_idx on wl_audit_log(created_at desc);
 
--- ── RLS: authenticated staff get full access; anon gets nothing ──────────────
+-- ── RLS: active NWHub staff (staff_profiles) get full access; anon gets nothing ──
+create or replace function wl_is_staff()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.staff_profiles
+    where user_id = auth.uid() and status = 'active'
+  )
+$$;
+revoke all on function wl_is_staff() from public, anon;
+grant execute on function wl_is_staff() to authenticated;
+
 do $$
 declare t text;
 begin
   foreach t in array array[
-    'competition_settings','divisions','teams','athletes','workouts','workout_parts',
-    'part_movements','judges','heats','lane_assignments','scores','score_events',
-    'appeals','releases','audit_log'
+    'wl_competition_settings','wl_divisions','wl_teams','wl_athletes','wl_workouts','wl_workout_parts',
+    'wl_part_movements','wl_judges','wl_heats','wl_lane_assignments','wl_scores','wl_score_events',
+    'wl_appeals','wl_releases','wl_audit_log'
   ] loop
     execute format('alter table %I enable row level security', t);
-    execute format('create policy "staff full access" on %I for all to authenticated using (true) with check (true)', t);
+    execute format('create policy "wl staff full access" on %I for all to authenticated using (wl_is_staff()) with check (wl_is_staff())', t);
   end loop;
 end $$;

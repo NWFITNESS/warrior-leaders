@@ -15,22 +15,22 @@ export async function saveJudge(formData: FormData) {
     active: formData.get('active') !== 'off',
   }
   if (!row.name) return
-  if (id) await supabase.from('judges').update(row).eq('id', id)
-  else await supabase.from('judges').insert(row)
+  if (id) await supabase.from('wl_judges').update(row).eq('id', id)
+  else await supabase.from('wl_judges').insert(row)
   await audit(supabase, { actor, action: id ? 'judge.update' : 'judge.create', entity: 'judge', entity_id: id || undefined, after: row })
   revalidatePath('/admin/judges')
 }
 
 export async function toggleJudge(id: string, active: boolean) {
   const { supabase, actor } = await requireStaff()
-  await supabase.from('judges').update({ active }).eq('id', id)
+  await supabase.from('wl_judges').update({ active }).eq('id', id)
   await audit(supabase, { actor, action: active ? 'judge.activate' : 'judge.deactivate', entity: 'judge', entity_id: id })
   revalidatePath('/admin/judges')
 }
 
 export async function deleteJudge(id: string) {
   const { supabase, actor } = await requireStaff()
-  await supabase.from('judges').delete().eq('id', id)
+  await supabase.from('wl_judges').delete().eq('id', id)
   await audit(supabase, { actor, action: 'judge.delete', entity: 'judge', entity_id: id })
   revalidatePath('/admin/judges')
 }

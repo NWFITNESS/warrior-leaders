@@ -4,7 +4,7 @@ export async function audit(
   supabase: SupabaseClient,
   entry: { actor: string; action: string; entity: string; entity_id?: string; before?: unknown; after?: unknown; reason?: string }
 ) {
-  await supabase.from('audit_log').insert({
+  await supabase.from('wl_audit_log').insert({
     actor: entry.actor,
     action: entry.action,
     entity: entry.entity,

@@ -8,8 +8,8 @@ export const metadata = { title: 'Judges' }
 export default async function JudgesPage() {
   const { supabase } = await requireStaff()
   const [{ data: judges }, { data: settings }] = await Promise.all([
-    supabase.from('judges').select('*').order('role').order('name').returns<Judge[]>(),
-    supabase.from('competition_settings').select('judge_code').single<Pick<Settings, 'judge_code'>>(),
+    supabase.from('wl_judges').select('*').order('role').order('name').returns<Judge[]>(),
+    supabase.from('wl_competition_settings').select('judge_code').single<Pick<Settings, 'judge_code'>>(),
   ])
 
   return (

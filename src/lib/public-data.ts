@@ -1,12 +1,17 @@
 import 'server-only'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@supabase/supabase-js'
 
-// Public pages read with the service role on the server and select only
-// non-sensitive columns (no emails or phone numbers ever leave this file).
+// Public pages read through SECURITY DEFINER functions that return only
+// non-sensitive columns (no emails or phone numbers). Uses the anon key —
+// no service-role key is needed anywhere in this app.
+function anon() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+}
 
 export async function getPublicSettings() {
-  const db = createAdminClient()
-  const { data } = await db.from('competition_settings').select('name, event_date, venue').single()
+  const { data } = await anon().rpc('wl_public_settings')
   return data as { name: string; event_date: string; venue: string } | null
 }
 
@@ -19,13 +24,7 @@ export interface PublicTeam {
 }
 
 export async function getPublicTeams() {
-  const db = createAdminClient()
-  const [{ data: divisions }, { data: teams }] = await Promise.all([
-    db.from('divisions').select('id, name, sort_order').order('sort_order'),
-    db.from('teams').select('id, name, bib, division_id, athletes(first_name, last_name, position)').order('name'),
-  ])
-  return {
-    divisions: (divisions ?? []) as { id: string; name: string }[],
-    teams: (teams ?? []) as PublicTeam[],
-  }
+  const { data } = await anon().rpc('wl_public_teams')
+  const result = (data ?? { divisions: [], teams: [] }) as { divisions: { id: string; name: string }[]; teams: PublicTeam[] }
+  return result
 }

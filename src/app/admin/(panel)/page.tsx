@@ -8,12 +8,12 @@ export default async function Overview() {
   const { supabase } = await requireStaff()
   const [{ data: settings }, { data: divisions }, { data: teams }, { count: athleteCount }, { data: workouts }, { count: judgeCount }] =
     await Promise.all([
-      supabase.from('competition_settings').select('*').single<Settings>(),
-      supabase.from('divisions').select('*').order('sort_order').returns<Division[]>(),
-      supabase.from('teams').select('id, division_id'),
-      supabase.from('athletes').select('id', { count: 'exact', head: true }),
-      supabase.from('workouts').select('id, workout_parts(id, scored)'),
-      supabase.from('judges').select('id', { count: 'exact', head: true }).eq('active', true),
+      supabase.from('wl_competition_settings').select('*').single<Settings>(),
+      supabase.from('wl_divisions').select('*').order('sort_order').returns<Division[]>(),
+      supabase.from('wl_teams').select('id, division_id'),
+      supabase.from('wl_athletes').select('id', { count: 'exact', head: true }),
+      supabase.from('wl_workouts').select('id, workout_parts:wl_workout_parts(id, scored)'),
+      supabase.from('wl_judges').select('id', { count: 'exact', head: true }).eq('active', true),
     ])
 
   const teamCount = teams?.length ?? 0

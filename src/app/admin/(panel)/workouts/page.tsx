@@ -10,8 +10,8 @@ const STATUS: Record<Workout['status'], string> = { draft: 'pill-dim', ready: 'p
 export default async function WorkoutsPage() {
   const { supabase } = await requireStaff()
   const { data: workouts } = await supabase
-    .from('workouts')
-    .select('*, workout_parts(*, part_movements(id))')
+    .from('wl_workouts')
+    .select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements(id))')
     .order('number')
     .returns<Workout[]>()
 

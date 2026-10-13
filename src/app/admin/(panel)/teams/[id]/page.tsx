@@ -9,8 +9,8 @@ export default async function EditTeam({ params }: { params: Promise<{ id: strin
   const { id } = await params
   const { supabase } = await requireStaff()
   const [{ data: divisions }, { data: team }] = await Promise.all([
-    supabase.from('divisions').select('*').order('sort_order').returns<Division[]>(),
-    supabase.from('teams').select('*, athletes(*)').eq('id', id).maybeSingle<Team>(),
+    supabase.from('wl_divisions').select('*').order('sort_order').returns<Division[]>(),
+    supabase.from('wl_teams').select('*, athletes:wl_athletes(*)').eq('id', id).maybeSingle<Team>(),
   ])
   if (!team) notFound()
   return (

@@ -10,19 +10,19 @@ Plan, mockups and decisions: Obsidian vault `01 - Projects/The Warrior Leaders.m
 
 ## Stack
 
-Next.js 16 (App Router) · Supabase (own project) · plain CSS in `src/app/globals.css` (no Tailwind) · Vercel.
+Next.js 16 (App Router) · Supabase (shared NW project, `wl_` tables) · plain CSS in `src/app/globals.css` (no Tailwind) · Vercel.
 
 ## Setup
 
-1. Create a Supabase project and run `supabase/migrations/*.sql` in the SQL editor, in order.
-2. In Supabase → Authentication → Sign In / Providers, turn **off** "Allow new users to sign up". Add staff under Authentication → Users → Add user.
-3. Copy `.env.example` to `.env.local` and fill in the URL, anon key and service role key.
+1. Tables live in the shared Northern Warrior Supabase project (`llmyrauorwaxleqxcgpc`), all prefixed `wl_`. Migrations in `supabase/migrations/` are already applied.
+2. Admin access = an active row in NWHub's `staff_profiles` (checked by `wl_is_staff()`), so NWHub staff logins work here.
+3. Copy `.env.example` to `.env.local` and add the anon key. No service-role key is used.
 4. `npm install` then `npm run dev`.
 
 ## Data access
 
-- Admin pages use the signed-in user's Supabase session; RLS allows `authenticated` full access, `anon` nothing.
-- Public pages read through `src/lib/public-data.ts` with the service role, server-side only, selecting non-sensitive columns (no emails/phones).
+- Admin pages use the signed-in user's Supabase session; RLS allows active staff only (`wl_is_staff()`), `anon` nothing.
+- Public pages call `wl_public_settings()` / `wl_public_teams()` (SECURITY DEFINER, anon-executable, non-sensitive columns only) via `src/lib/public-data.ts`.
 - Every admin change writes to `audit_log` via `src/lib/audit.ts`.
 
 ## Model
