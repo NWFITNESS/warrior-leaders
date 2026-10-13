@@ -9,10 +9,10 @@ type Part = Omit<WorkoutPart, 'part_movements'> & { id: string; capText: string;
 type Mv = Movement & { id: string }
 
 const uid = () => crypto.randomUUID()
-const blankMovement = (): Mv => ({ id: uid(), sort_order: 0, name: '', reps: null, rx_load: '', scaled_load: '', standards: '' })
+const blankMovement = (): Mv => ({ id: uid(), sort_order: 0, name: '', reps: null, reps_female: null, rx_load: '', scaled_load: '', standards: '' })
 const blankPart = (index: number): Part => ({
   id: uid(), label: String.fromCharCode(65 + index), name: '', sort_order: index,
-  score_type: 'for_time', direction: 'asc', time_cap_seconds: null, capText: '', total_reps: null, unit: '',
+  score_type: 'for_time', direction: 'asc', time_cap_seconds: null, capText: '', rounds: 1, capped_round_rule: 'cap_plus_reps', total_reps: null, unit: '',
   load_entry: 'per_athlete', scored: true, tiebreak_note: '', notes: '', part_movements: [blankMovement()],
 })
 
@@ -147,15 +147,37 @@ export function Builder({ workout }: { workout: Workout }) {
             </div>
           </div>
           <p className="small subtle">{HINT[p.score_type]}</p>
+          {p.score_type === 'for_time' && p.rounds > 1 && (
+            <div className="notice stack-sm">
+              <span>
+                <b style={{ color: 'var(--text)' }}>{p.rounds} rounds × {p.capText || '?'} window.</b> Each round is timed on its own and the score is the
+                {' '}<b style={{ color: 'var(--text)' }}>total of the {p.rounds} round times</b>, {p.direction === 'asc' ? 'lowest' : 'highest'} wins.
+              </span>
+              <div className="row">
+                <span className="small subtle">A round not finished in the window counts as:</span>
+                <div className="seg">
+                  <button type="button" aria-pressed={p.capped_round_rule === 'cap_plus_reps'} onClick={() => updatePart(p.id, { capped_round_rule: 'cap_plus_reps' })}>Window time + 1 s per rep missed</button>
+                  <button type="button" aria-pressed={p.capped_round_rule === 'cap_only'} onClick={() => updatePart(p.id, { capped_round_rule: 'cap_only' })}>Window time only</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid-4">
             <label className="field">
-              <span>{p.score_type === 'for_time' ? 'Time cap' : 'Time window'} (mm:ss)</span>
+              <span>{p.score_type === 'for_time' ? (p.rounds > 1 ? 'Window per round' : 'Time cap') : 'Time window'} (mm:ss)</span>
               <input className="input mono" placeholder="6:00" value={p.capText} onChange={(e) => updatePart(p.id, { capText: e.target.value })} />
             </label>
             {p.score_type === 'for_time' && (
               <label className="field">
-                <span>Total reps in workout</span>
+                <span>Timed rounds</span>
+                <input className="input mono" inputMode="numeric" value={p.rounds}
+                  onChange={(e) => updatePart(p.id, { rounds: Math.max(1, Math.min(20, Number(e.target.value.replace(/\D/g, '')) || 1)) })} />
+              </label>
+            )}
+            {p.score_type === 'for_time' && (
+              <label className="field">
+                <span>{p.rounds > 1 ? 'Reps per round (M)' : 'Total reps in workout'}</span>
                 <input className="input mono" inputMode="numeric"
                   placeholder={String(p.part_movements.reduce((n, m) => n + (m.reps ?? 0), 0) || '')}
                   value={p.total_reps ?? ''} onChange={(e) => updatePart(p.id, { total_reps: e.target.value ? Number(e.target.value.replace(/\D/g, '')) : null })} />
@@ -185,7 +207,7 @@ export function Builder({ workout }: { workout: Workout }) {
             </span>
             <div className="table-wrap">
               <div className="mv-grid" style={{ minWidth: 760 }}>
-                <span></span><span className="h">Movement</span><span className="h">Reps</span><span className="h">RX load</span><span className="h">Scaled load</span><span className="h">Standards</span><span></span>
+                <span></span><span className="h">Movement</span><span className="h">Reps M / F</span><span className="h">RX load</span><span className="h">Scaled load</span><span className="h">Standards</span><span></span>
                 {p.part_movements.map((m, mi) => (
                   <Row key={m.id}>
                     <span className="n">
@@ -193,7 +215,10 @@ export function Builder({ workout }: { workout: Workout }) {
                       <button className="linkbtn" aria-label="Move down" onClick={() => moveMv(p.id, mi, 1)} disabled={mi === p.part_movements.length - 1} style={{ display: 'block', margin: '0 auto' }}>▼</button>
                     </span>
                     <input className="input" aria-label="Movement" placeholder={p.score_type === 'max_load' ? '1RM clean' : 'Wall balls'} value={m.name} onChange={(e) => updateMv(p.id, m.id, { name: e.target.value })} />
-                    <input className="input mono" aria-label="Reps" inputMode="numeric" value={m.reps ?? ''} onChange={(e) => updateMv(p.id, m.id, { reps: e.target.value ? Number(e.target.value.replace(/\D/g, '')) : null })} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                      <input className="input mono" aria-label="Reps (male)" inputMode="numeric" value={m.reps ?? ''} onChange={(e) => updateMv(p.id, m.id, { reps: e.target.value ? Number(e.target.value.replace(/\D/g, '')) : null })} />
+                      <input className="input mono" aria-label="Reps (female)" inputMode="numeric" placeholder={m.reps != null ? String(m.reps) : ''} value={m.reps_female ?? ''} onChange={(e) => updateMv(p.id, m.id, { reps_female: e.target.value ? Number(e.target.value.replace(/\D/g, '')) : null })} />
+                    </div>
                     <input className="input" aria-label="RX load" placeholder="60/40kg" value={m.rx_load ?? ''} onChange={(e) => updateMv(p.id, m.id, { rx_load: e.target.value })} />
                     <input className="input" aria-label="Scaled load" placeholder="40/30kg" value={m.scaled_load ?? ''} onChange={(e) => updateMv(p.id, m.id, { scaled_load: e.target.value })} />
                     <textarea className="input" aria-label="Standards" rows={1} placeholder="What counts as a good rep" value={m.standards ?? ''} onChange={(e) => updateMv(p.id, m.id, { standards: e.target.value })} />

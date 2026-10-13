@@ -47,6 +47,7 @@ export interface Movement {
   sort_order: number
   name: string
   reps: number | null
+  reps_female: number | null // null = same as reps (female divisions)
   rx_load: string | null
   scaled_load: string | null
   standards: string | null
@@ -60,6 +61,8 @@ export interface WorkoutPart {
   score_type: ScoreType
   direction: Direction
   time_cap_seconds: number | null
+  rounds: number // for_time: N timed windows of time_cap_seconds; score = sum of window times
+  capped_round_rule: 'cap_plus_reps' | 'cap_only'
   total_reps: number | null
   unit: string | null
   load_entry: 'per_athlete' | 'per_team'
