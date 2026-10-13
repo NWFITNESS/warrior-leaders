@@ -1,69 +1,34 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Link from 'next/link'
+import { getPublicSettings } from '@/lib/public-data'
 
-export default function Home() {
+export const revalidate = 60
+
+export default async function Home() {
+  const settings = await getPublicSettings()
+  const date = settings ? new Date(settings.event_date + 'T09:00:00') : null
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+    <main className="public">
+      <header className="stack-sm" style={{ paddingTop: 24 }}>
+        <span className="eyebrow">{settings?.venue ?? 'Northern Warrior'}</span>
+        <h1 style={{ fontSize: 'clamp(2.4rem, 9vw, 4rem)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+          The Warrior <span style={{ color: 'var(--gold-hi)' }}>Leaders</span>
+        </h1>
+        {date && (
+          <p className="muted">{date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        )}
+      </header>
+
+      <section className="card card-gold stack-sm">
+        <h2>Leaderboard</h2>
+        <p className="muted">The live leaderboard opens on competition day. Results appear here once each workout has been verified and released by the judges.</p>
+      </section>
+
+      <section className="card stack-sm">
+        <h2>Teams</h2>
+        <p className="muted">See every pair competing, by division.</p>
+        <div><Link href="/teams" className="btn">View teams</Link></div>
+      </section>
+    </main>
+  )
 }

@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# The Warrior Leaders
 
-## Getting Started
+Judging and leaderboard system for the Northern Warrior competition (Sat 7 Nov 2026).
 
-First, run the development server:
+- **Public:** `leaders.northernwarrior.co.uk` (home, `/teams`; leaderboard in week 3)
+- **Admin:** `/admin` (staff sign-in via Supabase Auth)
+- **Judge app:** `/judge` (week 2: pick name + day code)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Plan, mockups and decisions: Obsidian vault `01 - Projects/The Warrior Leaders.md`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Next.js 16 (App Router) · Supabase (own project) · plain CSS in `src/app/globals.css` (no Tailwind) · Vercel.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Setup
 
-## Learn More
+1. Create a Supabase project and run `supabase/migrations/*.sql` in the SQL editor, in order.
+2. In Supabase → Authentication → Sign In / Providers, turn **off** "Allow new users to sign up". Add staff under Authentication → Users → Add user.
+3. Copy `.env.example` to `.env.local` and fill in the URL, anon key and service role key.
+4. `npm install` then `npm run dev`.
 
-To learn more about Next.js, take a look at the following resources:
+## Data access
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Admin pages use the signed-in user's Supabase session; RLS allows `authenticated` full access, `anon` nothing.
+- Public pages read through `src/lib/public-data.ts` with the service role, server-side only, selecting non-sensitive columns (no emails/phones).
+- Every admin change writes to `audit_log` via `src/lib/audit.ts`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Model
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`workouts` → `workout_parts` (score type, lowest/highest wins, cap, scored or buy-in) → `part_movements` (reps, RX/scaled loads, standards).
+Each scored part gets its own placing unless the workout has `combine_parts = true`.
+Points method (placing / reverse / custom) lives in `competition_settings`; see `src/lib/points.ts`.
