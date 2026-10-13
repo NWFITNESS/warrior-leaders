@@ -5,6 +5,16 @@ import Link from 'next/link'
 import { parseCsv, rowsToTeams, type ImportRow } from '@/lib/csv'
 import { importTeams } from '../actions'
 
+// .xlsx is read in the browser (read-excel-file); anything else is treated as CSV.
+async function readRows(file: File): Promise<string[][]> {
+  if (/\.xlsx$/i.test(file.name)) {
+    const { readSheet } = await import('read-excel-file/universal')
+    const data = await readSheet(file)
+    return data.map((row) => row.map((cell) => (cell == null ? '' : cell instanceof Date ? cell.toISOString().slice(0, 10) : String(cell))))
+  }
+  return parseCsv(await file.text())
+}
+
 export function ImportForm() {
   const [rows, setRows] = useState<ImportRow[] | null>(null)
   const [fileName, setFileName] = useState('')
@@ -12,14 +22,23 @@ export function ImportForm() {
   const [result, setResult] = useState<Awaited<ReturnType<typeof importTeams>> | null>(null)
   const [pending, start] = useTransition()
 
+  const [readError, setReadError] = useState('')
+
   async function onFile(file: File | undefined) {
     if (!file) return
     setResult(null)
+    setReadError('')
     setFileName(file.name)
-    setRows(rowsToTeams(parseCsv(await file.text())))
+    try {
+      setRows(rowsToTeams(await readRows(file)))
+    } catch {
+      setRows(null)
+      setReadError('That file couldn’t be read. Save it as .xlsx or .csv and try again.')
+    }
   }
 
   const valid = rows?.filter((r) => !r.error) ?? []
+  const warned = valid.filter((r) => r.warnings.length)
   const invalid = rows?.filter((r) => r.error) ?? []
 
   return (
@@ -30,14 +49,20 @@ export function ImportForm() {
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); onFile(e.dataTransfer.files[0]) }}
       >
-        <input id="csv-file" type="file" accept=".csv,text/csv" hidden onChange={(e) => onFile(e.target.files?.[0])} />
-        {fileName ? <>Loaded <b style={{ color: 'var(--text)' }}>{fileName}</b>. Choose another file to replace it.</> : 'Drop a CSV here, or click to choose a file'}
+        <input id="csv-file" type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={(e) => onFile(e.target.files?.[0])} />
+        {fileName ? <>Loaded <b style={{ color: 'var(--text)' }}>{fileName}</b>. Choose another file to replace it.</> : 'Drop an Excel (.xlsx) or CSV file here, or click to choose one'}
       </label>
+
+      {readError && <p className="notice notice-bad">{readError}</p>}
 
       {rows && (
         <div className="card stack">
           <div className="spread" style={{ alignItems: 'center' }}>
-            <h2>{valid.length} teams ready{invalid.length > 0 && <span className="small" style={{ color: 'var(--bad)' }}> · {invalid.length} rows with problems</span>}</h2>
+            <h2>
+              {valid.length} teams · {valid.reduce((n, r) => n + r.athletes.length, 0)} athletes
+              {warned.length > 0 && <span className="small" style={{ color: 'var(--warn)' }}> · {warned.length} to check</span>}
+              {invalid.length > 0 && <span className="small" style={{ color: 'var(--bad)' }}> · {invalid.length} can’t import</span>}
+            </h2>
             <div className="row">
               <span className="small subtle">If a team already exists:</span>
               <div className="seg">
@@ -48,15 +73,19 @@ export function ImportForm() {
           </div>
           <div className="table-wrap" style={{ maxHeight: 420, overflowY: 'auto' }}>
             <table className="table">
-              <thead><tr><th>Line</th><th>Team</th><th>Division</th><th>Athletes</th><th>Status</th></tr></thead>
+              <thead><tr><th>Rows</th><th>Team</th><th>Division</th><th>Athletes</th><th>Status</th></tr></thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.line}>
-                    <td className="mono subtle">{r.line}</td>
+                    <td className="mono subtle">{r.lines}</td>
                     <td>{r.team_name || '—'}</td>
                     <td>{r.division || '—'}</td>
                     <td className="small">{r.athletes.map((a) => `${a.first_name} ${a.last_name}`.trim()).join(' & ')}</td>
-                    <td>{r.error ? <span className="pill pill-bad">{r.error}</span> : <span className="pill pill-ok">OK</span>}</td>
+                    <td>
+                      {r.error ? <span className="pill pill-bad">{r.error}</span>
+                        : r.warnings.length ? <div className="stack-sm" style={{ gap: 4 }}>{r.warnings.map((w) => <span key={w} className="pill pill-warn" style={{ whiteSpace: 'normal' }}>{w}</span>)}</div>
+                        : <span className="pill pill-ok">OK</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

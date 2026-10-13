@@ -11,9 +11,9 @@ export default async function ImportPage() {
     <>
       <div className="stack-sm">
         <span className="eyebrow">Teams</span>
-        <h1>Import teams from CSV</h1>
+        <h1>Import teams</h1>
         <p className="muted" style={{ maxWidth: '68ch' }}>
-          One row per team. Export from your entry form or spreadsheet, then drop the file below. You’ll see a preview before anything is saved.
+          Drop in the athlete export from your entry platform (.xlsx), or a CSV. Either one row per athlete with a Team Name column (athletes are paired up by team name and division), or one row per team using the template. You’ll see a preview before anything is saved.
         </p>
       </div>
       <div className="card stack-sm">
