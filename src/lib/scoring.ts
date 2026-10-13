@@ -122,3 +122,94 @@ export function loadComplete(part: WorkoutPart, athleteIds: string[], entries: L
   const owners = part.load_entry === 'per_team' ? ['pair'] : athleteIds
   return owners.every((o) => part.part_movements.every((m) => entries.lifts[o]?.[m.id!] != null))
 }
+
+// ── Admin edits and paper scores ───────────────────────────────────────────────
+// The admin types results the way they're written on a scoresheet; we rebuild real entries
+// so the score is calculated exactly like a judge's.
+
+export interface AdminInput { rounds: string[]; amrapRounds: string; amrapReps: string; reps: string; kg: string; value: string }
+
+/** "2:41.5" / "161.5" → time in seconds; "cap 28" / "c28" → capped with 28 reps done. */
+export function parseRoundInput(text: string): { time: number } | { cappedReps: number } | null {
+  const t = text.trim().toLowerCase()
+  if (!t) return null
+  const cap = t.match(/^c(?:ap)?\s*\+?\s*(\d+)$/)
+  if (cap) return { cappedReps: Number(cap[1]) }
+  if (t.includes(':')) {
+    const [m, s] = t.split(':')
+    const sec = Number(m) * 60 + Number(s)
+    return Number.isFinite(sec) && Number(s) < 60 ? { time: Math.round(sec * 10) / 10 } : null
+  }
+  const n = Number(t)
+  return Number.isFinite(n) ? { time: Math.round(n * 10) / 10 } : null
+}
+
+export function entriesFromAdmin(part: WorkoutPart, sex: Sex, input: AdminInput): { entries: Entries } | { error: string } {
+  const num = (s: string) => (s.trim() === '' ? null : Number(s))
+  switch (part.score_type) {
+    case 'for_time': {
+      const n = Math.max(1, part.rounds || 1)
+      const rounds: RoundEntry[] = []
+      for (let i = 0; i < n; i++) {
+        const parsed = parseRoundInput(input.rounds[i] ?? '')
+        const name = n > 1 ? `Round ${i + 1}` : 'Time'
+        if (!parsed) return { error: `${name}: enter a time like 2:41.5, or “cap 28” if they didn’t finish.` }
+        if ('time' in parsed) {
+          if (part.time_cap_seconds != null && parsed.time > part.time_cap_seconds) return { error: `${name}: ${formatTime(parsed.time)} is over the ${formatTime(part.time_cap_seconds, false)} cap. Use “cap <reps>” instead.` }
+          rounds.push({ started_at: null, ticks: part.part_movements.map((m) => ({ movement_id: m.id!, at: parsed.time })), capped: false, partial_reps: null })
+        } else {
+          let left = parsed.cappedReps
+          const ticks: Tick[] = []
+          let partial = 0
+          for (const m of part.part_movements) {
+            const r = repsFor(m, sex)
+            if (left >= r && ticks.length < part.part_movements.length - 1) { ticks.push({ movement_id: m.id!, at: part.time_cap_seconds ?? 0 }); left -= r }
+            else { partial = Math.min(left, Math.max(0, r - 1)); break }
+          }
+          rounds.push({ started_at: null, ticks, capped: true, partial_reps: partial, confirmed: true })
+        }
+      }
+      return { entries: { kind: 'for_time', rounds } }
+    }
+    case 'amrap': {
+      const r = num(input.amrapRounds), x = num(input.amrapReps)
+      if (r == null || x == null || !Number.isFinite(r) || !Number.isFinite(x)) return { error: 'Enter full rounds and extra reps.' }
+      return { entries: { kind: 'amrap', rounds: r, reps: x } }
+    }
+    case 'max_reps': {
+      const r = num(input.reps)
+      if (r == null || !Number.isFinite(r)) return { error: 'Enter the total reps.' }
+      return { entries: { kind: 'max_reps', reps: r } }
+    }
+    case 'max_load': {
+      const kg = num(input.kg)
+      if (kg == null || !Number.isFinite(kg)) return { error: 'Enter the total load in kg.' }
+      return { entries: { kind: 'max_load', lifts: { admin: { total: kg } } } }
+    }
+    default: {
+      const v = num(input.value)
+      if (v == null || !Number.isFinite(v)) return { error: 'Enter the score.' }
+      return { entries: { kind: 'other', value: v } }
+    }
+  }
+}
+
+/** Pre-fills the admin form from an existing score. */
+export function adminInputFrom(part: WorkoutPart, sex: Sex, entries: Entries | null): AdminInput {
+  const blank: AdminInput = { rounds: Array.from({ length: Math.max(1, part.rounds || 1) }, () => ''), amrapRounds: '', amrapReps: '', reps: '', kg: '', value: '' }
+  if (!entries) return blank
+  switch (entries.kind) {
+    case 'for_time':
+      return { ...blank, rounds: blank.rounds.map((_, i) => {
+        const r = entries.rounds[i]
+        if (!r) return ''
+        const v = roundValue(part, sex, r)
+        if (v.value == null) return ''
+        return v.capped ? `cap ${cappedRoundReps(part, sex, r)}` : formatTime(v.value)
+      }) }
+    case 'amrap': return { ...blank, amrapRounds: entries.rounds?.toString() ?? '', amrapReps: entries.reps?.toString() ?? '' }
+    case 'max_reps': return { ...blank, reps: entries.reps?.toString() ?? '' }
+    case 'max_load': { const v = computeScore(part, sex, entries).value; return { ...blank, kg: v?.toString() ?? '' } }
+    default: return { ...blank, value: entries.value?.toString() ?? '' }
+  }
+}

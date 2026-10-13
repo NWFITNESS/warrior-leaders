@@ -11,6 +11,7 @@ const leagueSpartan = League_Spartan({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://leaders.northernwarrior.co.uk'),
   title: { default: 'The Warrior Leaders', template: '%s · The Warrior Leaders' },
   description: 'Live leaderboard for The Warrior Leaders competition by Northern Warrior Competitions.',
   icons: {

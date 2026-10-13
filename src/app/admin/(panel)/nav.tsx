@@ -10,9 +10,10 @@ const ITEMS: { href: string; label: string; soon?: string }[] = [
   { href: '/admin/judges', label: 'Judges' },
   { href: '/admin/heats', label: 'Heats & lanes' },
   { href: '/admin/scores', label: 'Scores' },
+  { href: '/admin/leaderboard', label: 'Leaderboard' },
+  { href: '/admin/emails', label: 'Emails' },
+  { href: '/admin/audit', label: 'Audit log' },
   { href: '/admin/settings', label: 'Settings' },
-  { href: '#', label: 'Leaderboard', soon: 'Wk 3' },
-  { href: '#', label: 'Emails', soon: 'Wk 3' },
 ]
 
 export function AdminNav() {

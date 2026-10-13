@@ -1,40 +1,34 @@
-import Link from 'next/link'
-import { Logo } from '@/components/Logo'
-import { getPublicSettings } from '@/lib/public-data'
+import { AutoRefresh } from '@/components/AutoRefresh'
+import { LeaderboardTabs } from '@/components/LeaderboardTabs'
+import { PublicNav } from '@/components/PublicNav'
+import { computeBoards, getBoardData } from '@/lib/public-data'
+import { lowerTotalWins } from '@/lib/points'
 
-export const revalidate = 60
+export const revalidate = 15
 
 export default async function Home() {
-  const settings = await getPublicSettings()
-  const date = settings ? new Date(settings.event_date + 'T09:00:00') : null
+  const board = await getBoardData()
+  const date = board ? new Date(board.settings.event_date + 'T09:00:00') : null
+  const boards = board ? computeBoards(board) : []
 
   return (
-    <main className="public">
-      <header className="stack" style={{ justifyItems: 'center', textAlign: 'center', paddingTop: 16 }}>
-        <Logo width={420} />
-        <div className="stack-sm" style={{ justifyItems: 'center' }}>
-          <h1 className="wordmark" style={{ fontSize: 'clamp(2rem, 8vw, 3.2rem)' }}>
-            The Warrior <b>Leaders</b>
-          </h1>
-          {date && (
-            <p className="muted" style={{ fontSize: '1.1rem' }}>
-              {date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-              {settings?.venue ? ` · ${settings.venue}` : ''}
-            </p>
-          )}
-        </div>
+    <main className="public" style={{ maxWidth: 980 }}>
+      <AutoRefresh seconds={30} />
+      <PublicNav current="/" />
+      <header className="stack-sm" style={{ textAlign: 'center', justifyItems: 'center' }}>
+        <h1 className="wordmark" style={{ fontSize: 'clamp(2rem, 7vw, 3rem)' }}>The Warrior <b>Leaders</b></h1>
+        {date && (
+          <p className="muted">
+            {date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {board?.settings.venue ? ` · ${board.settings.venue}` : ''}
+          </p>
+        )}
       </header>
-
-      <section className="card card-gold stack-sm">
-        <h2>Leaderboard</h2>
-        <p className="muted">The live leaderboard opens on competition day. Results appear here once each workout has been verified and released by the judges.</p>
-      </section>
-
-      <section className="card stack-sm">
-        <h2>Teams</h2>
-        <p className="muted">See every pair competing, by division.</p>
-        <div><Link href="/teams" className="btn">View teams</Link></div>
-      </section>
+      {boards.length ? (
+        <LeaderboardTabs boards={boards} lowerWins={lowerTotalWins(board!.settings.points_method)} />
+      ) : (
+        <div className="empty">The leaderboard is getting ready. Check back soon.</div>
+      )}
     </main>
   )
 }
