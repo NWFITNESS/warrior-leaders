@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { adminInputFrom, computeScore, type AdminInput, type Entries, type Sex } from '@/lib/scoring'
-import type { WorkoutPart } from '@/lib/types'
+import { partTitleOr, type WorkoutPart } from '@/lib/types'
 import { logAppeal, resolveAppeal, saveAdminScore, setRelease, setStatus } from './actions'
 
 export interface BoardRow { teamId: string; teamName: string; divisionId: string; divisionName: string; sex: Sex; heat: number | null; lane: number | null; judge: string | null }
@@ -106,14 +106,14 @@ export function ScoresBoard({ workoutNumber, parts, events, divisions, rows, sco
         <label className="check"><input type="checkbox" checked={onlyAction} onChange={(e) => setOnlyAction(e.target.checked)} />Only scores that need me</label>
       </div>
 
-      {parts.map((p) => {
+      {parts.map((p, pi) => {
         const partRows = [...visibleRows, ...(extraRow && !visibleRows.some((r) => r.teamId === extraRow.teamId) ? [extraRow] : [])]
           .filter((r) => !onlyAction || ['submitted', 'appeal', undefined].includes(scoreOf(p.id, r.teamId)?.status) )
         const toVerify = partRows.map((r) => scoreOf(p.id, r.teamId)).filter((s): s is Score => s?.status === 'submitted')
         return (
           <section key={p.id} className="stack-sm">
             <div className="spread" style={{ alignItems: 'center' }}>
-              <h2>{parts.length > 1 ? `Event ${workoutNumber} · Part ${p.label}${p.name ? ` ${p.name}` : ''}` : `Event ${workoutNumber}`}{!p.scored && <span className="small subtle"> (buy-in, not ranked)</span>}</h2>
+              <h2>{parts.length > 1 ? `Event ${workoutNumber} · ${partTitleOr(p, pi)}` : `Event ${workoutNumber}`}{!p.scored && <span className="small subtle"> (buy-in, not ranked)</span>}</h2>
               <button className="btn btn-sm" disabled={pending || !toVerify.length} onClick={() => run(() => setStatus(toVerify.map((s) => s.id), 'verified'))}>
                 Verify all checked ({toVerify.length})
               </button>

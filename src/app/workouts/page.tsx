@@ -1,6 +1,6 @@
 import { PublicNav } from '@/components/PublicNav'
 import { getBoardData } from '@/lib/public-data'
-import { formatCap, scoreTypeLabel } from '@/lib/types'
+import { formatCap, partTitle, scoreTypeLabel } from '@/lib/types'
 
 export const revalidate = 60
 export const metadata = { title: 'Workouts' }
@@ -19,7 +19,7 @@ export default async function WorkoutsPage() {
           <h2>Event {w.number} · {w.name}</h2>
           {w.parts.sort((a, b) => a.sort_order - b.sort_order).map((p) => (
             <div key={p.id} className="stack-sm">
-              {w.parts.length > 1 && <h3>Part {p.label}{p.name ? ` · ${p.name}` : ''}{!p.scored && <span className="small subtle"> (not scored)</span>}</h3>}
+              {w.parts.length > 1 && (partTitle(p) || !p.scored) && <h3>{partTitle(p)}{!p.scored && <span className="small subtle"> (not scored)</span>}</h3>}
               <p className="muted small">
                 {p.score_type === 'for_time' && p.rounds > 1
                   ? `${p.rounds} rounds, each in a ${formatCap(p.time_cap_seconds)} window. Each round is timed; your score is the total.`

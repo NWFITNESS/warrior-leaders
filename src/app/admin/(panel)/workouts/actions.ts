@@ -12,7 +12,7 @@ export async function createWorkout() {
   const number = (last?.number ?? 0) + 1
   const { data, error } = await supabase.from('wl_workouts').insert({ number, name: `Event ${number}` }).select('id').single()
   if (error) throw new Error(error.message)
-  await supabase.from('wl_workout_parts').insert({ workout_id: data.id, label: 'A', sort_order: 0 })
+  await supabase.from('wl_workout_parts').insert({ workout_id: data.id, label: '', sort_order: 0 })
   await audit(supabase, { actor, action: 'workout.create', entity: 'workout', entity_id: data.id })
   redirect(`/admin/workouts/${data.id}`)
 }
@@ -58,7 +58,7 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
     input.parts.map((p, i) => ({
       id: p.id,
       workout_id: input.id,
-      label: p.label.trim() || String.fromCharCode(65 + i),
+      label: p.label.trim(), // blank = no letter shown anywhere
       name: p.name.trim(),
       sort_order: i,
       score_type: p.score_type,

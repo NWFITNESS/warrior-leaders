@@ -9,7 +9,7 @@
 //    split by the better place in the most recent event; still level = shared rank.
 import { computeScore, formatTime, type Entries, type Sex } from './scoring'
 import { pointsFor, lowerTotalWins } from './points'
-import type { PointsMethod, WorkoutPart } from './types'
+import { partTitle, type PointsMethod, type WorkoutPart } from './types'
 
 export interface RankWorkout { id: string; number: number; name: string; combine_parts: boolean; parts: (WorkoutPart & { id: string })[] }
 export interface RankScore { part_id: string; team_id: string; value: number | null; tiebreak_value: number | null; capped: boolean; entries: Entries | Record<string, never> }
@@ -44,15 +44,18 @@ export function buildEvents(workouts: RankWorkout[]): RankEvent[] {
     if (w.combine_parts && scored.length > 1) {
       events.push({ key: w.id, label: String(w.number), title: w.name, workout: w, parts: scored, lowerWins: scored[0].direction === 'asc', lowerTiebreakWins: lowerTiebreakWins(scored[0]) })
     } else {
-      for (const p of scored) {
+      scored.forEach((p, i) => {
         const multi = scored.length > 1
+        // a typed letter gives "3A"; with no letter, several parts become "3.1", "3.2"
+        const suffix = p.label.trim() || (multi ? `.${i + 1}` : '')
+        const title = partTitle(p)
         events.push({
           key: p.id,
-          label: multi ? `${w.number}${p.label}` : String(w.number),
-          title: multi ? `${w.name} · Part ${p.label}${p.name ? ` ${p.name}` : ''}` : w.name,
+          label: multi ? `${w.number}${suffix}` : String(w.number),
+          title: multi && title ? `${w.name} · ${title}` : w.name,
           workout: w, parts: [p], lowerWins: p.direction === 'asc', lowerTiebreakWins: lowerTiebreakWins(p),
         })
-      }
+      })
     }
   }
   return events

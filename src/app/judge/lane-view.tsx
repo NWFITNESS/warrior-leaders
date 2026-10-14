@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { Lane } from '@/lib/judge-client'
 import { PartScorer } from './part-scorer'
+import { partTitleOr } from '@/lib/types'
 
 export function LaneView({ lane, onBack }: { lane: Lane; onBack: () => void }) {
   const [partId, setPartId] = useState(lane.parts[0]?.id)
@@ -35,9 +36,9 @@ export function LaneView({ lane, onBack }: { lane: Lane; onBack: () => void }) {
 
       {lane.parts.length > 1 && (
         <div className="j-tabs" role="tablist">
-          {lane.parts.map((p) => (
+          {lane.parts.map((p, i) => (
             <button key={p.id} type="button" role="tab" aria-pressed={p.id === part?.id} onClick={() => setPartId(p.id)}>
-              Part {p.label}{p.name ? ` · ${p.name}` : ''}
+              {partTitleOr(p, i)}
             </button>
           ))}
         </div>

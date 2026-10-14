@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { SCORE_TYPES, formatCap, parseCap, type Movement, type ScoreType, type Workout, type WorkoutPart } from '@/lib/types'
+import { SCORE_TYPES, formatCap, parseCap, partTitle, partTitleOr, type Movement, type ScoreType, type Workout, type WorkoutPart } from '@/lib/types'
 import { deleteWorkout, duplicateWorkout, saveWorkout, type WorkoutInput } from '../actions'
 
 type Part = Omit<WorkoutPart, 'part_movements'> & { id: string; capText: string; part_movements: Mv[] }
@@ -11,7 +11,7 @@ type Mv = Movement & { id: string }
 const uid = () => crypto.randomUUID()
 const blankMovement = (): Mv => ({ id: uid(), sort_order: 0, name: '', reps: null, reps_female: null, rx_load: '', scaled_load: '', standards: '' })
 const blankPart = (index: number): Part => ({
-  id: uid(), label: String.fromCharCode(65 + index), name: '', sort_order: index,
+  id: uid(), label: '', name: '', sort_order: index,
   score_type: 'for_time', direction: 'asc', time_cap_seconds: null, capText: '', rounds: 1, capped_round_rule: 'cap_plus_reps', total_reps: null, unit: '',
   load_entry: 'per_athlete', scored: true, tiebreak_note: '', notes: '', part_movements: [blankMovement()],
 })
@@ -62,7 +62,7 @@ export function Builder({ workout }: { workout: Workout }) {
 
   function save() {
     const bad = parts.find((p) => p.capText.trim() && parseCap(p.capText) == null)
-    if (bad) { setMsg({ error: `Part ${bad.label}: time cap should look like 6:00 or 6.` }); return }
+    if (bad) { setMsg({ error: `${partTitleOr(bad, parts.indexOf(bad))}: time cap should look like 6:00 or 6.` }); return }
     const input: WorkoutInput = {
       id: workout.id,
       number: Number(number) || workout.number,
@@ -119,7 +119,7 @@ export function Builder({ workout }: { workout: Workout }) {
           <div className="part-head">
             <div className="row">
               <span className="part-label">Part</span>
-              <input aria-label="Part label" className="input" style={{ width: 54, fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: '1.1rem', textAlign: 'center' }} value={p.label} onChange={(e) => updatePart(p.id, { label: e.target.value.toUpperCase().slice(0, 3) })} />
+              <input aria-label="Part letter (optional)" placeholder="–" title="Optional letter, e.g. A. Leave blank for no letter." className="input" style={{ width: 54, fontFamily: 'var(--f-display)', fontWeight: 700, fontSize: '1.1rem', textAlign: 'center' }} value={p.label} onChange={(e) => updatePart(p.id, { label: e.target.value.toUpperCase().slice(0, 3) })} />
               <input aria-label="Part name" className="input" style={{ width: 240 }} placeholder="Name (optional), e.g. Engine" value={p.name} onChange={(e) => updatePart(p.id, { name: e.target.value })} />
             </div>
             <div className="row">
@@ -235,7 +235,7 @@ export function Builder({ workout }: { workout: Workout }) {
           </div>
 
           <label className="field">
-            <span>Judge notes for part {p.label}</span>
+            <span>Judge notes{partTitle(p) ? ` for ${partTitle(p)}` : ''}</span>
             <textarea className="input" value={p.notes ?? ''} onChange={(e) => updatePart(p.id, { notes: e.target.value })} placeholder="Anything judges need to know: equipment, start position, rest between parts" />
           </label>
           
@@ -255,8 +255,8 @@ export function Builder({ workout }: { workout: Workout }) {
           </div>
           <p className="small subtle">
             {combine
-              ? `Scores from ${scoredParts.map((p) => p.label).join(' + ') || 'scored parts'} are added together into one placing.`
-              : `${scoredParts.length} placing${scoredParts.length === 1 ? '' : 's'} on the leaderboard: ${scoredParts.map((p) => `Event ${number}${p.label}`).join(', ') || 'none'}.`}
+              ? `Scores from ${scoredParts.map((p) => partTitleOr(p, parts.indexOf(p))).join(' + ') || 'scored parts'} are added together into one placing.`
+              : `${scoredParts.length} placing${scoredParts.length === 1 ? '' : 's'} on the leaderboard: ${scoredParts.map((p, i) => `Event ${number}${scoredParts.length > 1 ? (p.label.trim() || `.${i + 1}`) : ''}`).join(', ') || 'none'}.`}
             {' '}Untick “Scored on leaderboard” to make a part a buy-in.
           </p>
           {combine && mixedTypes && <p className="notice notice-bad">The scored parts have different score types, so they can’t be added together. Use separate placings, or make them the same type.</p>}

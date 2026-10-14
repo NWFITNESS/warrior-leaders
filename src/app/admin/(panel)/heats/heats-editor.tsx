@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import { formatCap, scoreTypeLabel } from '@/lib/types'
+import { formatCap, partTitleOr, scoreTypeLabel } from '@/lib/types'
 import { saveHeats, type HeatInput } from './actions'
 
 interface Team { id: string; name: string; bib: number | null; division_id: string }
@@ -161,7 +161,7 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
           {[...workout.parts].sort((a, b) => a.sort_order - b.sort_order).map((p) => (
             <div key={p.id} className="stack-sm" style={{ gap: 4 }}>
               <span className="small" style={{ fontWeight: 700 }}>
-                {workout.parts.length > 1 ? `Part ${p.label}${p.name ? ` · ${p.name}` : ''} · ` : ''}{scoreTypeLabel(p.score_type)}
+                {workout.parts.length > 1 ? `${partTitleOr(p, workout.parts.indexOf(p))} · ` : ''}{scoreTypeLabel(p.score_type)}
                 {' · '}{p.score_type === 'for_time' && p.rounds > 1 ? `${p.rounds} × ${formatCap(p.time_cap_seconds)} windows` : p.time_cap_seconds ? `${formatCap(p.time_cap_seconds)} cap` : 'no cap'}
                 {!p.scored && ' · buy-in'}
               </span>

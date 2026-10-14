@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { requireStaff } from '@/lib/auth'
-import { formatCap, scoreTypeLabel, type Workout } from '@/lib/types'
+import { formatCap, partTitle, partTitleOr, scoreTypeLabel, type Workout } from '@/lib/types'
 import { createWorkout } from './actions'
 
 export const metadata = { title: 'Workouts' }
@@ -41,7 +41,7 @@ export default async function WorkoutsPage() {
                   <tr key={w.id}>
                     <td className="mono">{w.number}</td>
                     <td><Link href={`/admin/workouts/${w.id}`} style={{ fontWeight: 600 }}>{w.name}</Link></td>
-                    <td className="small">{parts.map((p) => <div key={p.id}>{p.label}{p.name ? ` · ${p.name}` : ''}{!p.scored && <span className="subtle"> (buy-in)</span>}</div>)}</td>
+                    <td className="small">{parts.map((p, i) => <div key={p.id}>{parts.length > 1 ? partTitleOr(p, i) : (partTitle(p) ?? '—')}{!p.scored && <span className="subtle"> (buy-in)</span>}</div>)}</td>
                     <td className="small">{parts.map((p) => <div key={p.id}>{scoreTypeLabel(p.score_type)}</div>)}</td>
                     <td className="small">{parts.map((p) => <div key={p.id}>{p.direction === 'asc' ? 'Lowest' : 'Highest'}</div>)}</td>
                     <td className="small mono">{parts.map((p) => <div key={p.id}>{p.rounds > 1 ? `${p.rounds} × ` : ''}{formatCap(p.time_cap_seconds)}</div>)}</td>

@@ -6,7 +6,7 @@ import {
   computeScore, emptyEntries, formatTime, loadComplete, repsFor, roundValue,
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
 } from '@/lib/scoring'
-import { parseCap } from '@/lib/types'
+import { parseCap, partTitle } from '@/lib/types'
 
 const ev = (kind: string, payload: Record<string, unknown> = {}): JudgeEvent => ({ kind, payload, at: new Date().toISOString() })
 
@@ -65,7 +65,7 @@ export function PartScorer({ lane, part }: { lane: Lane; part: JudgePart }) {
   return (
     <div className="stack" style={{ gap: 14 }}>
       {part.notes && <p className="notice">{part.notes}</p>}
-      {!part.scored && <p className="notice">Part {part.label} is a buy-in and isn’t scored on the leaderboard. Record it anyway so the head judge has it.</p>}
+      {!part.scored && <p className="notice">{partTitle(part) ?? 'This part'} is a buy-in and isn’t scored on the leaderboard. Record it anyway so the head judge has it.</p>}
       {locked && <p className="notice notice-ok">This score has been {draft.locked} by the head judge and can’t be changed here.</p>}
 
       <fieldset disabled={locked || submitted} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }} className="stack">

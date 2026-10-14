@@ -121,3 +121,20 @@ export function parseCap(text: string): number | null {
   const n = Number(t)
   return Number.isFinite(n) ? Math.round(n * 60) : null // bare number = minutes
 }
+
+/**
+ * How a part is named on screen. "Part A" only if a letter was typed in the builder;
+ * otherwise just its name; otherwise nothing (null). Never invents a letter.
+ */
+export function partTitle(p: { label: string; name: string }): string | null {
+  const label = p.label.trim()
+  const name = p.name.trim()
+  if (label && name) return `Part ${label} · ${name}`
+  if (label) return `Part ${label}`
+  return name || null
+}
+
+/** For places that must show something (tabs, headings) when a workout has several unnamed parts. */
+export function partTitleOr(p: { label: string; name: string }, index: number): string {
+  return partTitle(p) ?? `Part ${index + 1}`
+}
