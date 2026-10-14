@@ -22,7 +22,7 @@ export default async function ScoresPage({ searchParams }: { searchParams: Promi
     supabase.from('wl_lane_assignments')
       .select('lane, team_id, heat:wl_heats!inner(number, workout_id), judge:wl_judges(name)')
       .eq('heat.workout_id', workout.id),
-    supabase.from('wl_divisions').select('id, name, sex').order('sort_order'),
+    supabase.from('wl_divisions').select('id, name, sex, level').order('sort_order'),
     supabase.from('wl_teams').select('id, name, division_id').order('name'),
   ])
   const partIds = (parts ?? []).map((p) => p.id)
@@ -42,7 +42,7 @@ export default async function ScoresPage({ searchParams }: { searchParams: Promi
     .map((t) => {
       const l = laneByTeam.get(t.id)
       const d = divById.get(t.division_id)!
-      return { teamId: t.id, teamName: t.name, divisionId: d.id, divisionName: d.name, sex: d.sex as Sex, heat: l?.heat.number ?? null, lane: l?.lane ?? null, judge: l?.judge?.name ?? null }
+      return { teamId: t.id, teamName: t.name, divisionId: d.id, divisionName: d.name, sex: d.sex as Sex, level: d.level, heat: l?.heat.number ?? null, lane: l?.lane ?? null, judge: l?.judge?.name ?? null }
     })
     .sort((a, b) => (a.heat ?? 999) - (b.heat ?? 999) || (a.lane ?? 0) - (b.lane ?? 0) || a.teamName.localeCompare(b.teamName))
 

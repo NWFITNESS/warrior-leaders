@@ -1,13 +1,13 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import { formatCap, partTitleOr, scoreTypeLabel } from '@/lib/types'
+import { describeMovement, formatCap, hasScaledVersion, partTitleOr, resolveMovement, scoreTypeLabel, type Movement as FullMovement } from '@/lib/types'
 import { saveHeats, type HeatInput } from './actions'
 
 interface Team { id: string; name: string; bib: number | null; division_id: string }
 interface Judge { id: string; name: string; role: string }
 interface Division { id: string; name: string; level: string; sex: string }
-interface Movement { id: string; sort_order: number; name: string; reps: number | null; reps_female: number | null; rx_load: string | null; scaled_load: string | null }
+type Movement = FullMovement & { id: string }
 interface Part { id: string; label: string; name: string; sort_order: number; score_type: 'for_time' | 'amrap' | 'max_reps' | 'max_load' | 'other'; time_cap_seconds: number | null; rounds: number; scored: boolean; part_movements: Movement[] }
 interface Workout { id: string; number: number; name: string; description: string | null; parts: Part[] }
 
@@ -175,8 +175,8 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
               </span>
               {[...p.part_movements].sort((a, b) => a.sort_order - b.sort_order).map((m) => (
                 <span key={m.id} className="small muted">
-                  {m.reps != null ? `${m.reps}${m.reps_female != null && m.reps_female !== m.reps ? `/${m.reps_female}` : ''} ` : ''}{m.name}
-                  {m.rx_load ? ` · RX ${m.rx_load}` : ''}{m.scaled_load ? ` · Scaled ${m.scaled_load}` : ''}
+                  {describeMovement(m)}
+                  {hasScaledVersion(m) && <span style={{ color: '#7fb0ff' }}> · Scaled: {describeMovement(resolveMovement(m, 'scaled'))}</span>}
                 </span>
               ))}
             </div>

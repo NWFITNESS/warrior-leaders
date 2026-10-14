@@ -90,6 +90,10 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
         rx_load: m.rx_load || null,
         scaled_load: m.scaled_load || null,
         standards: m.standards || null,
+        scaled_name: m.scaled_name?.trim() || null,
+        scaled_reps: m.scaled_reps ?? null,
+        scaled_reps_female: m.scaled_reps_female ?? null,
+        scaled_standards: m.scaled_standards?.trim() || null,
       }))
   )
   const { error: dErr } = await supabase.from('wl_part_movements').delete().in('part_id', partIds).not('id', 'in', `(${allMovements.map((m) => m.id).join(',') || '00000000-0000-0000-0000-000000000000'})`)

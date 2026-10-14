@@ -51,6 +51,11 @@ export interface Movement {
   rx_load: string | null
   scaled_load: string | null
   standards: string | null
+  // Scaled version — null/blank = same as RX
+  scaled_name?: string | null
+  scaled_reps?: number | null
+  scaled_reps_female?: number | null
+  scaled_standards?: string | null
 }
 
 export interface WorkoutPart {
@@ -137,4 +142,43 @@ export function partTitle(p: { label: string; name: string }): string | null {
 /** For places that must show something (tabs, headings) when a workout has several unnamed parts. */
 export function partTitleOr(p: { label: string; name: string }, index: number): string {
   return partTitle(p) ?? `Part ${index + 1}`
+}
+
+export type Level = 'rx' | 'scaled'
+
+/**
+ * The version of a movement a team actually does. For Scaled teams every blank Scaled field
+ * falls back to RX. Female Scaled reps: the Scaled female figure, else the Scaled reps,
+ * else the RX female reps. The movement id is unchanged, so ticks and scores still line up.
+ * The resolved load is returned in rx_load (so callers read one field).
+ */
+export function resolveMovement<M extends Movement>(m: M, level: Level | string): M {
+  if (level !== 'scaled') return m
+  const blank = (v: string | null | undefined) => (v == null || v.trim() === '' ? null : v)
+  const reps = m.scaled_reps ?? m.reps
+  const repsFemale = m.scaled_reps_female ?? (m.scaled_reps != null ? m.scaled_reps : m.reps_female)
+  return {
+    ...m,
+    name: blank(m.scaled_name) ?? m.name,
+    reps,
+    reps_female: repsFemale,
+    rx_load: blank(m.scaled_load) ?? m.rx_load,
+    standards: blank(m.scaled_standards) ?? m.standards,
+  }
+}
+
+export function resolvePart<P extends { part_movements: Movement[] }>(p: P, level: Level | string): P {
+  return level === 'scaled' ? { ...p, part_movements: p.part_movements.map((m) => resolveMovement(m, level)) } : p
+}
+
+/** True when a movement's Scaled version differs from RX in any way. */
+export function hasScaledVersion(m: Movement) {
+  const set = (v: string | null | undefined) => v != null && v.trim() !== ''
+  return set(m.scaled_name) || m.scaled_reps != null || m.scaled_reps_female != null || set(m.scaled_load) || set(m.scaled_standards)
+}
+
+/** "21/18 Echo bike (cal) · 60/40kg" for a movement (pass it through resolveMovement for Scaled). */
+export function describeMovement(m: Movement) {
+  const reps = m.reps != null ? `${m.reps}${m.reps_female != null && m.reps_female !== m.reps ? `/${m.reps_female}` : ''} ` : ''
+  return `${reps}${m.name}${m.rx_load ? ` · ${m.rx_load}` : ''}`
 }

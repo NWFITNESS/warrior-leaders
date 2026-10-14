@@ -6,7 +6,7 @@ import {
   computeScore, emptyEntries, formatTime, loadComplete, repsFor, roundValue,
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
 } from '@/lib/scoring'
-import { parseCap, partTitle } from '@/lib/types'
+import { parseCap, partTitle, resolvePart } from '@/lib/types'
 
 const ev = (kind: string, payload: Record<string, unknown> = {}): JudgeEvent => ({ kind, payload, at: new Date().toISOString() })
 
@@ -22,7 +22,9 @@ function initialDraft(lane: Lane, part: JudgePart): Draft {
   return { entries: emptyEntries(part), tiebreak: '', signed_by: '', status: 'draft', updatedAt: 0, locked }
 }
 
-export function PartScorer({ lane, part }: { lane: Lane; part: JudgePart }) {
+export function PartScorer({ lane, part: rawPart }: { lane: Lane; part: JudgePart }) {
+  // Scaled teams see (and are scored on) the Scaled version of each movement
+  const part = resolvePart(rawPart, lane.team.level)
   const sex: Sex = lane.team.sex
   const [draft, setDraft] = useState<Draft>(() => initialDraft(lane, part))
   const draftRef = useRef(draft)
@@ -60,7 +62,7 @@ export function PartScorer({ lane, part }: { lane: Lane; part: JudgePart }) {
   }
   const setEntries = (entries: Entries, events: JudgeEvent[] = []) => commit({ entries }, events)
 
-  const loadFor = (m: JudgePart['part_movements'][number]) => (lane.team.level === 'scaled' ? m.scaled_load ?? m.rx_load : m.rx_load)
+  const loadFor = (m: JudgePart['part_movements'][number]) => m.rx_load // already the team's version (resolvePart)
 
   return (
     <div className="stack" style={{ gap: 14 }}>

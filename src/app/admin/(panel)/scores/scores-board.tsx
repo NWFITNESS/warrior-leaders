@@ -3,10 +3,10 @@
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { adminInputFrom, computeScore, type AdminInput, type Entries, type Sex } from '@/lib/scoring'
-import { partTitleOr, type WorkoutPart } from '@/lib/types'
+import { partTitleOr, resolvePart, type WorkoutPart } from '@/lib/types'
 import { logAppeal, resolveAppeal, saveAdminScore, setRelease, setStatus } from './actions'
 
-export interface BoardRow { teamId: string; teamName: string; divisionId: string; divisionName: string; sex: Sex; heat: number | null; lane: number | null; judge: string | null }
+export interface BoardRow { teamId: string; teamName: string; divisionId: string; divisionName: string; sex: Sex; level: string; heat: number | null; lane: number | null; judge: string | null }
 interface Appeal { id: string; description: string; status: 'open' | 'upheld' | 'rejected'; resolution: string | null; created_at: string }
 interface Score {
   id: string; part_id: string; team_id: string; status: 'draft' | 'submitted' | 'verified' | 'appeal' | 'rejected'; source: 'judge' | 'paper' | 'admin'
@@ -46,7 +46,8 @@ export function ScoresBoard({ workoutNumber, parts, events, divisions, rows, sco
     if (!t) return null
     const d = divisions.find((x) => x.id === t.divisionId)
     const sex = rows.find((r) => r.divisionId === t.divisionId)?.sex ?? (d?.name.toLowerCase().includes('female') ? 'female' : 'male')
-    return { teamId: t.id, teamName: t.name, divisionId: t.divisionId, divisionName: d?.name ?? '', sex, heat: null, lane: null, judge: null } as BoardRow
+    const level = rows.find((r) => r.divisionId === t.divisionId)?.level ?? (d?.name.toLowerCase().includes('scaled') ? 'scaled' : 'rx')
+    return { teamId: t.id, teamName: t.name, divisionId: t.divisionId, divisionName: d?.name ?? '', sex, level, heat: null, lane: null, judge: null } as BoardRow
   }, [extraTeam, otherTeams, divisions, rows])
 
   return (
@@ -126,7 +127,8 @@ export function ScoresBoard({ workoutNumber, parts, events, divisions, rows, sco
                   {partRows.map((r) => {
                     const s = scoreOf(p.id, r.teamId)
                     const entries = s?.entries && 'kind' in s.entries ? (s.entries as Entries) : null
-                    const res = entries ? computeScore(p, r.sex, entries) : null
+                    const rp = resolvePart(p, r.level) // this team's RX or Scaled version
+                    const res = entries ? computeScore(rp, r.sex, entries) : null
                     const key = `${p.id}:${r.teamId}`
                     const panel = open?.startsWith(key + ':') ? open.slice(key.length + 1) : null
                     const appeal = s?.appeals.find((a) => a.status === 'open')
@@ -163,7 +165,7 @@ export function ScoresBoard({ workoutNumber, parts, events, divisions, rows, sco
                             <td colSpan={7} style={{ background: 'rgba(255,255,255,0.02)' }}>
                               {panel === 'detail' && s && <Detail score={s} detail={res?.detail ?? []} />}
                               {panel === 'edit' && (
-                                <ScoreForm part={p} sex={r.sex} entries={entries} tiebreak={s?.tiebreak_value?.toString() ?? ''} isPaper={!s} pending={pending}
+                                <ScoreForm part={rp} sex={r.sex} entries={entries} tiebreak={s?.tiebreak_value?.toString() ?? ''} isPaper={!s} pending={pending}
                                   onCancel={() => setOpen(null)}
                                   onSave={(input, tiebreak, reason) => run(() => saveAdminScore({ partId: p.id, teamId: r.teamId, input, tiebreak, reason, source: s ? 'admin' : 'paper' }), () => setOpen(null))} />
                               )}
@@ -176,7 +178,7 @@ export function ScoresBoard({ workoutNumber, parts, events, divisions, rows, sco
                                   onCancel={() => setOpen(null)} onSubmit={(text) => run(() => setStatus([s.id], 'rejected', text), () => setOpen(null))} />
                               )}
                               {panel === 'resolve' && s && appeal && (
-                                <Resolve appeal={appeal} part={p} sex={r.sex} entries={entries} score={s} pending={pending} onCancel={() => setOpen(null)}
+                                <Resolve appeal={appeal} part={rp} sex={r.sex} entries={entries} score={s} pending={pending} onCancel={() => setOpen(null)}
                                   onResolve={(outcome, note, correction) => run(() => resolveAppeal({ appealId: appeal.id, outcome, resolution: note, correction: correction ? { partId: p.id, teamId: r.teamId, ...correction } : undefined }), () => setOpen(null))} />
                               )}
                             </td>

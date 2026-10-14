@@ -1,6 +1,6 @@
 import { PublicNav } from '@/components/PublicNav'
 import { getBoardData } from '@/lib/public-data'
-import { formatCap, partTitle, scoreTypeLabel } from '@/lib/types'
+import { describeMovement, formatCap, hasScaledVersion, partTitle, resolveMovement, scoreTypeLabel } from '@/lib/types'
 
 export const revalidate = 60
 export const metadata = { title: 'Workouts' }
@@ -29,16 +29,20 @@ export default async function WorkoutsPage() {
               </p>
               <div className="table-wrap">
                 <table className="table">
-                  <thead><tr><th>Movement</th><th>Reps (M / F)</th><th>RX</th><th>Scaled</th></tr></thead>
+                  <thead><tr><th style={{ width: '50%' }}>RX</th><th>Scaled</th></tr></thead>
                   <tbody>
-                    {p.part_movements.map((m) => (
-                      <tr key={m.id}>
-                        <td><b>{m.name}</b>{m.standards && <div className="small muted" style={{ marginTop: 2 }}>{m.standards}</div>}</td>
-                        <td className="mono">{m.reps ?? '—'}{m.reps_female != null && m.reps_female !== m.reps ? ` / ${m.reps_female}` : ''}</td>
-                        <td>{m.rx_load ?? '—'}</td>
-                        <td>{m.scaled_load ?? m.rx_load ?? '—'}</td>
-                      </tr>
-                    ))}
+                    {p.part_movements.map((m) => {
+                      const sc = resolveMovement(m, 'scaled')
+                      return (
+                        <tr key={m.id}>
+                          <td><b>{describeMovement(m)}</b>{m.standards && <div className="small muted" style={{ marginTop: 2 }}>{m.standards}</div>}</td>
+                          <td>
+                            <b style={hasScaledVersion(m) ? undefined : { color: 'var(--muted)', fontWeight: 500 }}>{describeMovement(sc)}</b>
+                            {sc.standards && sc.standards !== m.standards && <div className="small muted" style={{ marginTop: 2 }}>{sc.standards}</div>}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

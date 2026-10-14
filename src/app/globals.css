@@ -119,7 +119,11 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .part { border: 1px solid var(--line-2); border-radius: 12px; padding: 16px 18px; display: grid; gap: 14px; background: var(--surface); }
 .part-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .part-label { font-family: var(--f-display); font-weight: 700; font-size: 1.3rem; color: var(--gold-hi); }
-.mv-grid { display: grid; grid-template-columns: 28px minmax(140px, 2fr) 110px minmax(80px, 1fr) minmax(80px, 1fr) minmax(160px, 3fr) 30px; gap: 6px; align-items: start; }
+.mv-grid { display: grid; grid-template-columns: 28px 62px minmax(150px, 2fr) 110px minmax(100px, 1fr) minmax(180px, 3fr) 30px; gap: 6px; align-items: start; }
+.mv-sep { grid-column: 1 / -1; border-top: 1px solid var(--line); margin: 6px 0 2px; }
+.mv-tag { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 0 0; text-align: center; }
+.mv-tag.rx { color: var(--gold-hi); }
+.mv-tag.sc { color: #7fb0ff; }
 .mv-grid .h { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--subtle); padding-top: 2px; }
 .mv-grid .n { color: var(--subtle); font-size: 0.8rem; padding-top: 8px; text-align: center; }
 .mv-grid textarea.input { min-height: 38px; }

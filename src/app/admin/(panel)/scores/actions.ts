@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireStaff } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { computeScore, entriesFromAdmin, parseRoundInput, type AdminInput, type Sex } from '@/lib/scoring'
-import type { WorkoutPart } from '@/lib/types'
+import { resolvePart, type WorkoutPart } from '@/lib/types'
 
 type Result = { ok?: boolean; error?: string }
 
@@ -45,16 +45,18 @@ export async function saveAdminScore(args: {
 
   const [{ data: part }, { data: team }, { data: existing }] = await Promise.all([
     supabase.from('wl_workout_parts').select('*, part_movements:wl_part_movements(*)').eq('id', args.partId).single(),
-    supabase.from('wl_teams').select('id, name, division:wl_divisions(sex)').eq('id', args.teamId).single(),
+    supabase.from('wl_teams').select('id, name, division:wl_divisions(sex, level)').eq('id', args.teamId).single(),
     supabase.from('wl_scores').select('*').eq('part_id', args.partId).eq('team_id', args.teamId).maybeSingle(),
   ])
   if (!part || !team) return { error: 'Workout part or team not found.' }
   if (existing?.status === 'appeal') return { error: 'This score has an open appeal. Edit it from the appeal so the outcome is recorded.' }
 
-  const sex = ((team.division as unknown as { sex: Sex } | null)?.sex ?? 'male') as Sex
-  const built = entriesFromAdmin(part as WorkoutPart, sex, args.input)
+  const div = team.division as unknown as { sex: Sex; level: string } | null
+  const sex = (div?.sex ?? 'male') as Sex
+  const teamPart = resolvePart(part as WorkoutPart, div?.level ?? 'rx') // Scaled teams use the Scaled reps
+  const built = entriesFromAdmin(teamPart, sex, args.input)
   if ('error' in built) return { error: built.error }
-  const result = computeScore(part as WorkoutPart, sex, built.entries)
+  const result = computeScore(teamPart, sex, built.entries)
 
   let tiebreak: number | null = null
   if (args.tiebreak.trim()) {

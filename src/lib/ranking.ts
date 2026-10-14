@@ -9,12 +9,12 @@
 //    split by the better place in the most recent event; still level = shared rank.
 import { computeScore, formatTime, type Entries, type Sex } from './scoring'
 import { pointsFor, lowerTotalWins } from './points'
-import { partTitle, type PointsMethod, type WorkoutPart } from './types'
+import { partTitle, resolvePart, type PointsMethod, type WorkoutPart } from './types'
 
 export interface RankWorkout { id: string; number: number; name: string; combine_parts: boolean; parts: (WorkoutPart & { id: string })[] }
 export interface RankScore { part_id: string; team_id: string; value: number | null; tiebreak_value: number | null; capped: boolean; entries: Entries | Record<string, never> }
 export interface RankTeam { id: string; name: string; division_id: string }
-export interface RankDivision { id: string; name: string; sex: Sex }
+export interface RankDivision { id: string; name: string; sex: Sex; level?: string }
 export interface Release { part_id: string; division_id: string; released_at?: string }
 
 export interface RankEvent {
@@ -66,13 +66,13 @@ export function isReleased(event: RankEvent, divisionId: string, releases: Relea
   return event.parts.every((p) => releases.some((r) => r.part_id === p.id && r.division_id === divisionId))
 }
 
-function eventValue(event: RankEvent, teamId: string, scores: RankScore[], sex: Sex): { value: number | null; tiebreak: number | null; display: string } {
+function eventValue(event: RankEvent, teamId: string, scores: RankScore[], sex: Sex, level: string): { value: number | null; tiebreak: number | null; display: string } {
   const own = event.parts.map((p) => scores.find((s) => s.part_id === p.id && s.team_id === teamId))
   if (own.some((s) => !s || s.value == null)) return { value: null, tiebreak: null, display: '—' }
   if (event.parts.length === 1) {
     const s = own[0]!
     const entries = s.entries && 'kind' in s.entries ? (s.entries as Entries) : null
-    const display = entries ? computeScore(event.parts[0], sex, entries).display : formatValue(event.parts[0], Number(s.value))
+    const display = entries ? computeScore(resolvePart(event.parts[0], level), sex, entries).display : formatValue(event.parts[0], Number(s.value))
     return { value: Number(s.value), tiebreak: s.tiebreak_value != null ? Number(s.tiebreak_value) : null, display }
   }
   const value = Math.round(own.reduce((n, s) => n + Number(s!.value), 0) * 10) / 10
@@ -89,8 +89,8 @@ export function formatValue(part: Pick<WorkoutPart, 'score_type' | 'unit'>, valu
   }
 }
 
-export function rankEvent(event: RankEvent, teams: RankTeam[], scores: RankScore[], sex: Sex, method: PointsMethod, custom: number[]) {
-  const rows = teams.map((t) => ({ team: t, ...eventValue(event, t.id, scores, sex) }))
+export function rankEvent(event: RankEvent, teams: RankTeam[], scores: RankScore[], sex: Sex, method: PointsMethod, custom: number[], level = 'rx') {
+  const rows = teams.map((t) => ({ team: t, ...eventValue(event, t.id, scores, sex, level) }))
   const scored = rows.filter((r) => r.value != null)
   const cmp = (a: typeof rows[number], b: typeof rows[number]) => {
     const d = event.lowerWins ? a.value! - b.value! : b.value! - a.value!
@@ -118,7 +118,7 @@ export function divisionStandings(opts: {
 }): { events: RankEvent[]; standings: Standing[] } {
   const teams = opts.teams.filter((t) => t.division_id === opts.division.id)
   const events = opts.releases === 'all' ? opts.events : opts.events.filter((e) => isReleased(e, opts.division.id, opts.releases as Release[]))
-  const perEvent = events.map((e) => rankEvent(e, teams, opts.scores, opts.division.sex, opts.method, opts.custom))
+  const perEvent = events.map((e) => rankEvent(e, teams, opts.scores, opts.division.sex, opts.method, opts.custom, opts.division.level ?? 'rx'))
   const lowerTotal = lowerTotalWins(opts.method)
 
   const standings: Standing[] = teams.map((team) => {

@@ -14,7 +14,7 @@ export default async function AdminLeaderboard({ searchParams }: { searchParams:
   const { supabase } = await requireStaff()
   const [{ data: settings }, { data: divisions }, { data: teams }, { data: workouts }, { data: scores }, { data: releases }] = await Promise.all([
     supabase.from('wl_competition_settings').select('points_method, custom_points').single(),
-    supabase.from('wl_divisions').select('id, name, sex').order('sort_order'),
+    supabase.from('wl_divisions').select('id, name, sex, level').order('sort_order'),
     supabase.from('wl_teams').select('id, name, division_id, athletes:wl_athletes(first_name, last_name, position)').order('name'),
     supabase.from('wl_workouts').select('id, number, name, combine_parts, parts:wl_workout_parts(*, part_movements:wl_part_movements(*))').order('number'),
     supabase.from('wl_scores').select('part_id, team_id, value, tiebreak_value, capped, entries').eq('status', 'verified'),
@@ -44,7 +44,7 @@ export default async function AdminLeaderboard({ searchParams }: { searchParams:
       {events.length === 0 && <div className="empty">No scored workouts yet.</div>}
       {(divisions ?? []).map((d) => {
         const { events: shown, standings } = divisionStandings({
-          division: { id: d.id, name: d.name, sex: d.sex as Sex }, teams: teams ?? [], events, scores: (scores ?? []) as RankScore[],
+          division: { id: d.id, name: d.name, sex: d.sex as Sex, level: d.level }, teams: teams ?? [], events, scores: (scores ?? []) as RankScore[],
           releases: view === 'public' ? releases ?? [] : 'all', method, custom: settings?.custom_points ?? [],
         })
         const board = {
