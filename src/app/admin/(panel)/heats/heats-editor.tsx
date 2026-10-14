@@ -80,7 +80,15 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
   const touch = () => { setDirty(true); setMsg({}) }
   const setLane = (heatId: string, lane: number, patch: Partial<HeatInput['lanes'][number]>) => {
     touch()
-    setHeats((hs) => hs.map((h) => (h.id !== heatId ? h : { ...h, lanes: h.lanes.map((l) => (l.lane === lane ? { ...l, ...patch } : l)) })))
+    setHeats((hs) => hs.map((h) => ({
+      ...h,
+      lanes: h.lanes.map((l) => {
+        if (h.id === heatId && l.lane === lane) return { ...l, ...patch }
+        // picking a team that's already placed moves it: clear its old lane
+        if (patch.team_id && l.team_id === patch.team_id) return { ...l, team_id: null }
+        return l
+      }),
+    })))
   }
 
   /** Start times from the first heat: workout time + changeover (+ extra when RX ↔ Scaled). */
@@ -294,8 +302,24 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
         </div>
       </div>
       {msg.error && <p className="notice notice-bad">{msg.error}</p>}
-      {unplaced.length > 0 && heats.length > 0 && (
-        <p className="notice">Not in a heat yet: {unplaced.map((t) => t.name).join(', ')}</p>
+      {heats.length > 0 && (
+        unplaced.length === 0 ? (
+          <p className="notice notice-ok">Every team is in a heat.</p>
+        ) : (
+          <div className="notice stack-sm">
+            <b style={{ color: 'var(--text)' }}>{unplaced.length} team{unplaced.length > 1 ? 's' : ''} not in a heat yet</b>
+            {divisions.map((d) => {
+              const list = unplaced.filter((t) => t.division_id === d.id)
+              return list.length ? (
+                <div key={d.id} className="row" style={{ gap: 8, alignItems: 'baseline' }}>
+                  <DivisionTag d={d} />
+                  <span>{list.map((t) => t.name).join(', ')}</span>
+                </div>
+              ) : null
+            })}
+            <span className="small subtle">They’re listed first in each lane’s team dropdown.</span>
+          </div>
+        )
       )}
       {heats.length === 0 && <div className="empty">No heats yet. Use “Fill heats with all teams” above, or add one by hand.</div>}
 
@@ -327,13 +351,25 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
                         <td>
                           <select className="input" value={l.team_id ?? ''} aria-label={`Heat ${hi + 1} lane ${l.lane} team`} onChange={(e) => setLane(h.id, l.lane, { team_id: e.target.value || null })}>
                             <option value="">— empty —</option>
-                            {divisions.map((d) => (
-                              <optgroup key={d.id} label={d.name}>
-                                {teams.filter((t) => t.division_id === d.id).map((t) => (
-                                  <option key={t.id} value={t.id}>{t.name}{used.has(t.id) && used.get(t.id) !== hi + 1 && t.id !== l.team_id ? ` (heat ${used.get(t.id)})` : ''}</option>
-                                ))}
-                              </optgroup>
-                            ))}
+                            {/* the lane's current team stays selectable at the top */}
+                            {l.team_id && teamById.get(l.team_id) && (
+                              <option value={l.team_id}>{teamById.get(l.team_id)!.name}</option>
+                            )}
+                            {/* teams not in any heat yet, by division */}
+                            {divisions.map((d) => {
+                              const free = teams.filter((t) => t.division_id === d.id && !used.has(t.id))
+                              return free.length ? (
+                                <optgroup key={d.id} label={`${d.name} · not in a heat (${free.length})`}>
+                                  {free.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                </optgroup>
+                              ) : null
+                            })}
+                            {/* everyone already placed, so a team can still be moved */}
+                            <optgroup label="Already in a heat (moves them here)">
+                              {teams.filter((t) => used.has(t.id) && t.id !== l.team_id)
+                                .sort((a, b) => (used.get(a.id) ?? 0) - (used.get(b.id) ?? 0) || a.name.localeCompare(b.name))
+                                .map((t) => <option key={t.id} value={t.id}>{t.name} · heat {used.get(t.id)} · {divById.get(t.division_id)?.name}</option>)}
+                            </optgroup>
                           </select>
                           {otherHeat >= 0 && <span className="pill pill-bad" style={{ marginTop: 4 }}>Also in heat {otherHeat + 1}</span>}
                         </td>
