@@ -25,10 +25,13 @@ export default async function SchedulePage() {
               </div>
               <div className="stack-sm" style={{ gap: 4 }}>
                 {h.lanes.map((l) => (
-                  <div key={l.lane} className="row" style={{ gap: 10, flexWrap: 'nowrap' }}>
-                    <span className="mono subtle" style={{ width: 54 }}>Lane {l.lane}</span>
-                    <Link href={`/teams/${l.team_id}`} style={{ color: 'var(--text)', fontWeight: 600 }}>{l.team_name}</Link>
-                    <span className="small subtle">{l.division}</span>
+                  <div key={l.lane} className="row" style={{ gap: 10, flexWrap: 'nowrap', alignItems: 'baseline' }}>
+                    {/* fixed lane label; long team names wrap inside their own column */}
+                    <span className="mono subtle" style={{ flex: '0 0 auto', whiteSpace: 'nowrap', minWidth: 58 }}>Lane {l.lane}</span>
+                    <span style={{ flex: '1 1 auto', minWidth: 0 }}>
+                      <Link href={`/teams/${l.team_id}`} style={{ color: 'var(--text)', fontWeight: 600 }}>{l.team_name}</Link>
+                      <span className="small subtle" style={{ whiteSpace: 'nowrap' }}> · {l.division}</span>
+                    </span>
                   </div>
                 ))}
               </div>
