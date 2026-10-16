@@ -123,6 +123,27 @@ export function tapStep(m: Pick<Movement, 'tap_step'> | undefined) {
   return Math.max(1, m?.tap_step || 1)
 }
 
+/** One tap on a for-time workout, worked out from the latest entries (never a stale screen):
+ *  adds `tap_step` reps to the current movement; reaching its reps ticks it off at `nowMs`. */
+export function forTimeTap(part: WorkoutPart, sex: Sex, entries: ForTimeEntries, dir: 1 | -1, nowMs: number) {
+  const mv = part.part_movements
+  const ri = entries.rounds.findIndex((r) => !(mv.length && r.ticks.length >= mv.length) && !(r.capped && r.partial_reps != null && r.confirmed))
+  const round = entries.rounds[ri]
+  if (!round?.started_at || round.capped) return null
+  const m = mv[round.ticks.length]
+  if (!m) return null
+  const need = repsFor(m, sex)
+  const next = Math.max(0, Math.min(need, (round.reps_done ?? 0) + dir * tapStep(m)))
+  let r: RoundEntry = { ...round, reps_done: next }
+  let tick: { round: number; movement_id: string; movement: string; at_seconds: number } | null = null
+  if (dir > 0 && need > 0 && next >= need) {
+    const at = Math.round(((nowMs - round.started_at) / 1000) * 10) / 10
+    r = { ...round, reps_done: 0, ticks: [...round.ticks, { movement_id: m.id!, at }] }
+    tick = { round: ri + 1, movement_id: m.id!, movement: m.name, at_seconds: at }
+  }
+  return { entries: { kind: 'for_time' as const, rounds: entries.rounds.map((x, i) => (i === ri ? r : x)) }, tick }
+}
+
 /** Where a team is inside an AMRAP round: which movement, and reps done / needed on it. */
 export function amrapPosition(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, repsIntoRound: number) {
   let start = 0

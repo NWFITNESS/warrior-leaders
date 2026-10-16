@@ -119,7 +119,7 @@ function Race({ data, heat }: { data: LiveData; heat: LiveHeat | null }) {
               <small className={s.lane.level === 'scaled' ? 'sc' : 'rx'}>{s.lane.division}</small>
             </span>
             <span className={`lr-track ${s.lane.level === 'scaled' ? 'sc' : 'rx'}`}>
-              <span className={`lr-fill${s.fraction < 0.35 ? ' short' : ''}`} style={{ width: `${Math.round(Math.max(s.started ? 0.02 : 0, s.fraction) * 1000) / 10}%` }}>
+              <span className={`lr-fill${s.fraction < 0.6 ? ' short' : ''}`} style={{ width: `${Math.round(Math.max(s.started ? 0.02 : 0, s.fraction) * 1000) / 10}%` }}>
                 {s.now && <em>{s.now}</em>}
               </span>
             </span>

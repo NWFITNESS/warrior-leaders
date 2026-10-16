@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDraft, putDraft, queue, type Draft, type JudgeEvent, type JudgePart, type Lane } from '@/lib/judge-client'
 import {
-  amrapPosition, amrapTap, computeScore, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
+  amrapPosition, amrapTap, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
 } from '@/lib/scoring'
 import { parseCap, partTitle, resolvePart } from '@/lib/types'
@@ -61,6 +61,11 @@ export function PartScorer({ lane, part: rawPart }: { lane: Lane; part: JudgePar
     })
   }
   const setEntries = (entries: Entries, events: JudgeEvent[] = []) => commit({ entries }, events)
+  // taps build on the latest saved entries, so quick double taps are never lost to a stale render
+  const tapEntries = (fn: (e: Entries) => { entries: Entries; events?: JudgeEvent[] } | null) => {
+    const r = fn(draftRef.current.entries)
+    if (r) commit({ entries: r.entries }, r.events ?? [])
+  }
 
   const loadFor = (m: JudgePart['part_movements'][number]) => m.rx_load // already the team's version (resolvePart)
 
@@ -72,17 +77,19 @@ export function PartScorer({ lane, part: rawPart }: { lane: Lane; part: JudgePar
 
       <fieldset disabled={locked || submitted} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }} className="stack">
         {draft.entries.kind === 'for_time' && (
-          <ForTime part={part} sex={sex} entries={draft.entries} loadFor={loadFor} onChange={setEntries} />
+          <ForTime part={part} sex={sex} entries={draft.entries} loadFor={loadFor} onChange={setEntries}
+            onTap={(dir) => tapEntries((e) => { if (e.kind !== 'for_time') return null; const t = forTimeTap(part, sex, e, dir, Date.now()); return t && { entries: t.entries, events: t.tick ? [ev('tick', { ...t.tick, via: 'tap' })] : [] } })} />
         )}
         {draft.entries.kind === 'amrap' && (
-          <Amrap part={part} sex={sex} loadFor={loadFor} entries={draft.entries} onChange={setEntries} />
+          <Amrap part={part} sex={sex} loadFor={loadFor} entries={draft.entries} onChange={setEntries}
+            onTap={(dir) => tapEntries((e) => e.kind === 'amrap' ? { entries: { kind: 'amrap', ...amrapTap(part, sex, e.rounds ?? 0, e.reps ?? 0, dir) } } : null)} />
         )}
         {draft.entries.kind === 'max_reps' && (
           <>
             <MovementList part={part} sex={sex} loadFor={loadFor} />
             <CapClock part={part} />
             <TapPad what="Total reps" count={draft.entries.reps ?? 0} step={tapStep(part.part_movements[0])}
-              onTap={(dir) => { const e = draftRef.current.entries as Extract<Entries, { kind: 'max_reps' }>; setEntries({ kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) }) }} />
+              onTap={(dir) => tapEntries((e) => e.kind === 'max_reps' ? { entries: { kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null)} />
             <Stepper label="Total reps" value={draft.entries.reps} onChange={(v) => setEntries({ kind: 'max_reps', reps: v }, [ev('input', { reps: v })])} />
           </>
         )}
@@ -145,9 +152,9 @@ function useNow(active: boolean) {
   return now
 }
 
-function ForTime({ part, sex, entries, loadFor, onChange }: {
+function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
   part: JudgePart; sex: Sex; entries: ForTimeEntries; loadFor: (m: JudgePart['part_movements'][number]) => string | null
-  onChange: (e: Entries, events?: JudgeEvent[]) => void
+  onChange: (e: Entries, events?: JudgeEvent[]) => void; onTap: (dir: 1 | -1) => void
 }) {
   const movements = part.part_movements
   const cap = part.time_cap_seconds
@@ -169,20 +176,7 @@ function ForTime({ part, sex, entries, loadFor, onChange }: {
     const max = Math.max(0, repsFor(m ?? { reps: 0, reps_female: null }, sex) - 1)
     return { ...r, capped: true, partial_reps: r.partial_reps ?? (r.reps_done ? Math.min(r.reps_done, max) : null) }
   }
-  // one tap on the current movement; reaching its reps ticks it off (time-stamped)
-  const tap = (dir: 1 | -1) => {
-    if (!round) return
-    const m = movements[round.ticks.length]
-    if (!m) return
-    const need = repsFor(m, sex)
-    const next = Math.max(0, Math.min(need, (round.reps_done ?? 0) + dir * tapStep(m)))
-    if (dir > 0 && need > 0 && next >= need) {
-      const at = Math.round(elapsed * 10) / 10
-      update({ ...round, reps_done: 0, ticks: [...round.ticks, { movement_id: m.id!, at }] }, [ev('tick', { round: ri + 1, movement_id: m.id, movement: m.name, at_seconds: at, via: 'tap' })])
-    } else {
-      update({ ...round, reps_done: next }, [])
-    }
-  }
+
 
   // window ran out with movements left: mark the round capped
   useEffect(() => {
@@ -249,7 +243,7 @@ function ForTime({ part, sex, entries, loadFor, onChange }: {
               </button>
               {cur && repsFor(m, sex) > 0 && (
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <TapPad what={m.name} count={round.reps_done ?? 0} need={repsFor(m, sex)} step={tapStep(m)} onTap={tap} />
+                  <TapPad what={m.name} count={round.reps_done ?? 0} need={repsFor(m, sex)} step={tapStep(m)} onTap={onTap} />
                 </div>
               )}
             </div>
@@ -296,9 +290,9 @@ function ForTime({ part, sex, entries, loadFor, onChange }: {
 }
 
 // ── AMRAP ──────────────────────────────────────────────────────────────────────
-function Amrap({ part, sex, loadFor, entries, onChange }: {
+function Amrap({ part, sex, loadFor, entries, onChange, onTap }: {
   part: JudgePart; sex: Sex; loadFor: (m: JudgePart['part_movements'][number]) => string | null
-  entries: Extract<Entries, { kind: 'amrap' }>; onChange: (e: Entries, events?: JudgeEvent[]) => void
+  entries: Extract<Entries, { kind: 'amrap' }>; onChange: (e: Entries, events?: JudgeEvent[]) => void; onTap: (dir: 1 | -1) => void
 }) {
   return (
     <>
@@ -308,7 +302,7 @@ function Amrap({ part, sex, loadFor, entries, onChange }: {
         const pos = amrapPosition(part, sex, entries.reps ?? 0)
         return (
           <TapPad what={pos ? `Round ${(entries.rounds ?? 0) + 1} · ${pos.movement.name}` : 'Reps'} count={pos?.done ?? 0} need={pos?.need} step={tapStep(pos?.movement)}
-            onTap={(dir) => onChange({ kind: 'amrap', ...amrapTap(part, sex, entries.rounds ?? 0, entries.reps ?? 0, dir) })} />
+            onTap={onTap} />
         )
       })()}
       <Stepper label="Full rounds" value={entries.rounds} onChange={(v) => onChange({ ...entries, rounds: v }, [ev('input', { rounds: v })])} />
