@@ -275,3 +275,13 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .live-heats li.now .s { color: var(--gold-hi); }
 .live-heats .s small { font-size: 0.75vw; }
 .live-race .empty, .live-heats .empty { font-size: 1.2vw; }
+.live-feature { border: 1px solid var(--line-2); border-radius: 12px; padding: 1.4vh 1vw; display: grid; gap: 0.6vh; }
+.live-feature.now { border-color: var(--gold); background: rgba(150, 119, 5, 0.12); }
+.live-feature .ft { font-family: var(--f-display); font-size: 1.8vw; line-height: 1.1; }
+.live-feature .fd { font-size: 0.95vw; color: var(--muted); }
+.live-feature .fc { display: flex; align-items: baseline; gap: 0.8vw; }
+.live-feature .fc span { font-size: 0.9vw; text-transform: uppercase; letter-spacing: 0.12em; color: var(--subtle); font-weight: 600; }
+.live-feature .fc b { font-size: 2.6vw; color: var(--gold-hi); font-weight: 500; line-height: 1; }
+.live-feature .fbar { height: 0.6vh; min-height: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.live-feature .fbar span { display: block; height: 100%; background: var(--gold-hi); transition: width 1s linear; }
+.live-heats .live-feature .lanes { font-size: 0.95vw; }

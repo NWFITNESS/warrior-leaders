@@ -64,7 +64,7 @@ export default async function HeatsPage({ searchParams }: { searchParams: Promis
           <button className="btn btn-sm">Show on screen</button>
         </form>
         <span className="small subtle">
-          Automatic shows the heat the judges are scoring right now (or the next heat by the clock). Pick a heat to hold it on screen, e.g. during the lane intro.
+          Automatic shows the heat the judges are scoring; when nobody is scoring it follows the heat start times above (on now, then the next heat). The heat times panel always runs on the start times. Pick a heat to hold the race on it, e.g. during the lane intro.
         </span>
       </section>
       <nav className="seg" aria-label="Workout">

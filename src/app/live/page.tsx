@@ -7,8 +7,9 @@ export const metadata = { title: 'Live' }
 //   /live?view=race    race only
 //   /live?view=heats   heat times only
 //   &heat=<id>         show a particular heat instead of following the judges
-export default async function LivePage({ searchParams }: { searchParams: Promise<{ view?: string; heat?: string }> }) {
-  const { view, heat } = await searchParams
+//   &at=09:25          rehearsal: heat times run from that time instead of now
+export default async function LivePage({ searchParams }: { searchParams: Promise<{ view?: string; heat?: string; at?: string }> }) {
+  const { view, heat, at } = await searchParams
   const mode = view === 'race' || view === 'heats' ? view : 'split'
-  return <LiveScreen mode={mode} heatId={heat ?? null} />
+  return <LiveScreen mode={mode} heatId={heat ?? null} at={at && /^\d{1,2}:\d{2}$/.test(at) ? at : null} />
 }

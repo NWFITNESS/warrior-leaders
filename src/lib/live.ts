@@ -7,12 +7,13 @@ import {
 import { partTitle, resolvePart, type Level, type WorkoutPart } from './types'
 
 export interface LiveLane { lane: number; lane_assignment_id: string; team_id: string; team_name: string; division: string; level: Level; sex: Sex }
-export interface LiveHeat { id: string; number: number; start_time: string | null; workout_id: string; workout_number: number; workout_name: string; lanes: LiveLane[] }
+export interface LiveHeat { id: string; number: number; start_time: string | null; workout_id: string; workout_number: number; workout_name: string; duration_seconds: number; lanes: LiveLane[] }
 export interface LiveProgress { lane_assignment_id: string; part_id: string; status: string; value: number | null; capped: boolean; entries: Entries | Record<string, never>; updated_at: string }
 export interface LiveData {
   name: string
   heat_id: string | null
   pinned: boolean
+  server_now: number // epoch ms, to correct the screen's clock
   heats: LiveHeat[]
   parts: (WorkoutPart & { id: string })[]
   progress: LiveProgress[]
@@ -138,6 +139,43 @@ export function heatClock(states: LaneState[]) {
   const starts = states.map((s) => s.runningSince).filter((x): x is number => x != null)
   return starts.length ? Math.min(...starts) : null
 }
+
+// ── Heat times on the clock ────────────────────────────────────────────────────
+// The right-hand panel runs on the start times set in Admin → Heats, not on what the judges do.
+
+/** Seconds since midnight, UK time. */
+export function londonSeconds(ms: number) {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(ms))
+  const n = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0)
+  return n('hour') * 3600 + n('minute') * 60 + n('second')
+}
+const secs = (t: string) => { const [h, m, x] = t.split(':').map(Number); return h * 3600 + m * 60 + (x || 0) }
+
+export interface TimedHeat { heat: LiveHeat; start: number | null; end: number | null; state: 'done' | 'now' | 'next' | 'later' }
+
+/** On now = from its start time until its workout time is up (no cap: until the next heat starts). */
+export function heatTimeline(heats: LiveHeat[], now: number): TimedHeat[] {
+  const timed = heats.filter((h) => h.start_time).map((h) => ({ heat: h, start: secs(h.start_time!) })).sort((a, b) => a.start - b.start)
+  const out: TimedHeat[] = timed.map(({ heat, start }, i) => {
+    const following = timed.slice(i + 1).find((x) => x.start > start)?.start ?? null
+    const end = heat.duration_seconds > 0 ? start + heat.duration_seconds : following ?? start + 15 * 60
+    const state: TimedHeat['state'] = now >= end ? 'done' : now >= start ? 'now' : 'later'
+    return { heat, start, end, state }
+  })
+  const firstLater = out.find((x) => x.state === 'later')
+  if (firstLater) firstLater.state = 'next'
+  // heats without a time yet go last
+  heats.filter((h) => !h.start_time).forEach((h) => out.push({ heat: h, start: null, end: null, state: 'later' }))
+  return out
+}
+
+/** 4:05 under an hour, else 1h 12m. */
+export function countdown(seconds: number) {
+  const s = Math.max(0, Math.round(seconds))
+  if (s >= 3600) return `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}m`
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+export const clockText = (sec: number) => `${String(Math.floor(sec / 3600) % 24).padStart(2, '0')}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`
 
 export const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`
 export const hhmm = (t: string | null) => (t ? t.slice(0, 5) : 'TBC')
