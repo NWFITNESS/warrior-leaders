@@ -56,6 +56,7 @@ export interface Movement {
   scaled_reps?: number | null
   scaled_reps_female?: number | null
   scaled_standards?: string | null
+  tap_step?: number | null // reps per tap on the judge's + button (default 1)
 }
 
 export interface WorkoutPart {

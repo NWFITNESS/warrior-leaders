@@ -9,7 +9,7 @@ type Part = Omit<WorkoutPart, 'part_movements'> & { id: string; capText: string;
 type Mv = Movement & { id: string }
 
 const uid = () => crypto.randomUUID()
-const blankMovement = (): Mv => ({ id: uid(), sort_order: 0, name: '', reps: null, reps_female: null, rx_load: '', scaled_load: '', standards: '', scaled_name: '', scaled_reps: null, scaled_reps_female: null, scaled_standards: '' })
+const blankMovement = (): Mv => ({ id: uid(), sort_order: 0, name: '', reps: null, reps_female: null, rx_load: '', scaled_load: '', standards: '', scaled_name: '', scaled_reps: null, scaled_reps_female: null, scaled_standards: '', tap_step: 1 })
 const blankPart = (index: number): Part => ({
   id: uid(), label: '', name: '', sort_order: index,
   score_type: 'for_time', direction: 'asc', time_cap_seconds: null, capText: '', rounds: 1, capped_round_rule: 'cap_plus_reps', total_reps: null, unit: '',
@@ -207,7 +207,7 @@ export function Builder({ workout }: { workout: Workout }) {
             </span>
             <div className="table-wrap">
               <div className="mv-grid" style={{ minWidth: 860 }}>
-                <span></span><span></span><span className="h">Movement</span><span className="h">Reps M / F</span><span className="h">Load (M/F)</span><span className="h">Standards</span><span></span>
+                <span></span><span></span><span className="h">Movement</span><span className="h">Reps M / F · Tap</span><span className="h">Load (M/F)</span><span className="h">Standards</span><span></span>
                 {p.part_movements.map((m, mi) => {
                   const num = (v: string) => (v ? Number(v.replace(/\D/g, '')) : null)
                   return (
@@ -220,9 +220,11 @@ export function Builder({ workout }: { workout: Workout }) {
                       </span>
                       <span className="mv-tag rx">RX</span>
                       <input className="input" aria-label="RX movement" placeholder={p.score_type === 'max_load' ? '1RM clean' : 'Pull-ups'} value={m.name} onChange={(e) => updateMv(p.id, m.id, { name: e.target.value })} />
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.8fr', gap: 4 }}>
                         <input className="input mono" aria-label="RX reps (male)" inputMode="numeric" value={m.reps ?? ''} onChange={(e) => updateMv(p.id, m.id, { reps: num(e.target.value) })} />
                         <input className="input mono" aria-label="RX reps (female)" inputMode="numeric" placeholder={m.reps != null ? String(m.reps) : ''} value={m.reps_female ?? ''} onChange={(e) => updateMv(p.id, m.id, { reps_female: num(e.target.value) })} />
+                        {/* reps counted by one tap of the judge's + button (e.g. 3 for 21 cal row) */}
+                        <input className="input mono" aria-label="Reps per judge tap" title="Reps per judge tap" placeholder="1" inputMode="numeric" value={m.tap_step && m.tap_step !== 1 ? m.tap_step : ''} onChange={(e) => updateMv(p.id, m.id, { tap_step: num(e.target.value) ?? 1 })} />
                       </div>
                       <input className="input" aria-label="RX load" placeholder="60/40kg" value={m.rx_load ?? ''} onChange={(e) => updateMv(p.id, m.id, { rx_load: e.target.value })} />
                       <textarea className="input" aria-label="RX standards" rows={1} placeholder="What counts as a good rep" value={m.standards ?? ''} onChange={(e) => updateMv(p.id, m.id, { standards: e.target.value })} />
@@ -231,9 +233,10 @@ export function Builder({ workout }: { workout: Workout }) {
                       <span></span>
                       <span className="mv-tag sc">Scaled</span>
                       <input className="input" aria-label="Scaled movement" placeholder={m.name ? `${m.name} (same)` : 'Same as RX'} value={m.scaled_name ?? ''} onChange={(e) => updateMv(p.id, m.id, { scaled_name: e.target.value })} />
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.8fr', gap: 4 }}>
                         <input className="input mono" aria-label="Scaled reps (male)" inputMode="numeric" placeholder={m.reps != null ? String(m.reps) : ''} value={m.scaled_reps ?? ''} onChange={(e) => updateMv(p.id, m.id, { scaled_reps: num(e.target.value) })} />
                         <input className="input mono" aria-label="Scaled reps (female)" inputMode="numeric" placeholder={String(m.scaled_reps ?? m.reps_female ?? m.reps ?? '')} value={m.scaled_reps_female ?? ''} onChange={(e) => updateMv(p.id, m.id, { scaled_reps_female: num(e.target.value) })} />
+                        <span></span>
                       </div>
                       <input className="input" aria-label="Scaled load" placeholder={m.rx_load ? `${m.rx_load} (same)` : '40/30kg'} value={m.scaled_load ?? ''} onChange={(e) => updateMv(p.id, m.id, { scaled_load: e.target.value })} />
                       <textarea className="input" aria-label="Scaled standards" rows={1} placeholder="Same as RX" value={m.scaled_standards ?? ''} onChange={(e) => updateMv(p.id, m.id, { scaled_standards: e.target.value })} />

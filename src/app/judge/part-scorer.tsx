@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDraft, putDraft, queue, type Draft, type JudgeEvent, type JudgePart, type Lane } from '@/lib/judge-client'
 import {
-  computeScore, emptyEntries, formatTime, loadComplete, repsFor, roundValue,
+  amrapPosition, amrapTap, computeScore, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
 } from '@/lib/scoring'
 import { parseCap, partTitle, resolvePart } from '@/lib/types'
@@ -81,6 +81,8 @@ export function PartScorer({ lane, part: rawPart }: { lane: Lane; part: JudgePar
           <>
             <MovementList part={part} sex={sex} loadFor={loadFor} />
             <CapClock part={part} />
+            <TapPad what="Total reps" count={draft.entries.reps ?? 0} step={tapStep(part.part_movements[0])}
+              onTap={(dir) => { const e = draftRef.current.entries as Extract<Entries, { kind: 'max_reps' }>; setEntries({ kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) }) }} />
             <Stepper label="Total reps" value={draft.entries.reps} onChange={(v) => setEntries({ kind: 'max_reps', reps: v }, [ev('input', { reps: v })])} />
           </>
         )}
@@ -161,11 +163,31 @@ function ForTime({ part, sex, entries, loadFor, onChange }: {
 
   const update = (r: RoundEntry, events: JudgeEvent[]) =>
     onChange({ kind: 'for_time', rounds: entries.rounds.map((x, i) => (i === ri ? r : x)) }, events)
+  // time's up: reps already tapped on the current movement pre-fill the partial reps
+  const capRound = (r: RoundEntry): RoundEntry => {
+    const m = movements[r.ticks.length]
+    const max = Math.max(0, repsFor(m ?? { reps: 0, reps_female: null }, sex) - 1)
+    return { ...r, capped: true, partial_reps: r.partial_reps ?? (r.reps_done ? Math.min(r.reps_done, max) : null) }
+  }
+  // one tap on the current movement; reaching its reps ticks it off (time-stamped)
+  const tap = (dir: 1 | -1) => {
+    if (!round) return
+    const m = movements[round.ticks.length]
+    if (!m) return
+    const need = repsFor(m, sex)
+    const next = Math.max(0, Math.min(need, (round.reps_done ?? 0) + dir * tapStep(m)))
+    if (dir > 0 && need > 0 && next >= need) {
+      const at = Math.round(elapsed * 10) / 10
+      update({ ...round, reps_done: 0, ticks: [...round.ticks, { movement_id: m.id!, at }] }, [ev('tick', { round: ri + 1, movement_id: m.id, movement: m.name, at_seconds: at, via: 'tap' })])
+    } else {
+      update({ ...round, reps_done: next }, [])
+    }
+  }
 
   // window ran out with movements left: mark the round capped
   useEffect(() => {
     if (running && cap != null && elapsed >= cap) {
-      update({ ...round!, capped: true }, [ev('cap', { round: ri + 1, auto: true, at_seconds: cap })])
+      update(capRound(round!), [ev('cap', { round: ri + 1, auto: true, at_seconds: cap })])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, elapsed >= (cap ?? Infinity)])
@@ -222,9 +244,14 @@ function ForTime({ part, sex, entries, loadFor, onChange }: {
                 {m.standards && (cur || !round.started_at) && <div className="std">{m.standards}</div>}
               </div>
               <button type="button" className="j-tick" disabled={!cur} aria-label={`Tick ${m.name}`}
-                onClick={() => update({ ...round, ticks: [...round.ticks, { movement_id: m.id!, at: Math.round(elapsed * 10) / 10 }] }, [ev('tick', { round: ri + 1, movement_id: m.id, movement: m.name, at_seconds: Math.round(elapsed * 10) / 10 })])}>
+                onClick={() => update({ ...round, reps_done: 0, ticks: [...round.ticks, { movement_id: m.id!, at: Math.round(elapsed * 10) / 10 }] }, [ev('tick', { round: ri + 1, movement_id: m.id, movement: m.name, at_seconds: Math.round(elapsed * 10) / 10 })])}>
                 {tick ? formatTime(tick.at) : '✓'}
               </button>
+              {cur && repsFor(m, sex) > 0 && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <TapPad what={m.name} count={round.reps_done ?? 0} need={repsFor(m, sex)} step={tapStep(m)} onTap={tap} />
+                </div>
+              )}
             </div>
           )
         })}
@@ -245,18 +272,18 @@ function ForTime({ part, sex, entries, loadFor, onChange }: {
 
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <button type="button" className="btn btn-ghost btn-sm" disabled={!round.ticks.length || round.capped}
-          onClick={() => update({ ...round, ticks: round.ticks.slice(0, -1) }, [ev('untick', { round: ri + 1, movement_id: round.ticks.at(-1)?.movement_id })])}>
+          onClick={() => update({ ...round, reps_done: 0, ticks: round.ticks.slice(0, -1) }, [ev('untick', { round: ri + 1, movement_id: round.ticks.at(-1)?.movement_id })])}>
           Undo last tick
         </button>
         {running && cap != null && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => update({ ...round, capped: true }, [ev('cap', { round: ri + 1, auto: false, at_seconds: Math.round(elapsed * 10) / 10 })])}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => update(capRound(round), [ev('cap', { round: ri + 1, auto: false, at_seconds: Math.round(elapsed * 10) / 10 })])}>
             Time’s up
           </button>
         )}
         {round.started_at && (
           confirmReset ? (
             <span className="row" style={{ gap: 8 }}>
-              <button type="button" className="btn btn-danger btn-sm" onClick={() => { setConfirmReset(false); update({ started_at: null, ticks: [], capped: false, partial_reps: null, confirmed: false }, [ev('reset_round', { round: ri + 1 })]) }}>Restart round</button>
+              <button type="button" className="btn btn-danger btn-sm" onClick={() => { setConfirmReset(false); update({ started_at: null, ticks: [], capped: false, partial_reps: null, confirmed: false, reps_done: 0 }, [ev('reset_round', { round: ri + 1 })]) }}>Restart round</button>
               <button type="button" className="linkbtn" onClick={() => setConfirmReset(false)}>Keep</button>
             </span>
           ) : (
@@ -277,6 +304,13 @@ function Amrap({ part, sex, loadFor, entries, onChange }: {
     <>
       <MovementList part={part} sex={sex} loadFor={loadFor} />
       <CapClock part={part} />
+      {repsPerRound(part, sex) > 0 && (() => {
+        const pos = amrapPosition(part, sex, entries.reps ?? 0)
+        return (
+          <TapPad what={pos ? `Round ${(entries.rounds ?? 0) + 1} · ${pos.movement.name}` : 'Reps'} count={pos?.done ?? 0} need={pos?.need} step={tapStep(pos?.movement)}
+            onTap={(dir) => onChange({ kind: 'amrap', ...amrapTap(part, sex, entries.rounds ?? 0, entries.reps ?? 0, dir) })} />
+        )
+      })()}
       <Stepper label="Full rounds" value={entries.rounds} onChange={(v) => onChange({ ...entries, rounds: v }, [ev('input', { rounds: v })])} />
       <Stepper label="Extra reps" value={entries.reps} onChange={(v) => onChange({ ...entries, reps: v }, [ev('input', { reps: v })])} />
     </>
@@ -373,6 +407,19 @@ function DecimalInput({ value, onChange, label, placeholder, className = 'input'
   return (
     <input className={className} style={style} inputMode="decimal" placeholder={placeholder} aria-label={label} value={text}
       onChange={(e) => { const t = e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''); setText(t); onChange(t) }} />
+  )
+}
+
+/** Big rep-tap button: each tap counts `step` reps. Feeds the live race screen. */
+function TapPad({ what, count, need, step, onTap }: { what: string; count: number; need?: number; step: number; onTap: (dir: 1 | -1) => void }) {
+  return (
+    <div className="j-tap">
+      <button type="button" className="minus" aria-label={`Take off ${step} ${what}`} disabled={count <= 0 && need != null} onClick={() => onTap(-1)}>−{step}</button>
+      <button type="button" className="plus" aria-label={`Add ${step} ${what}`} onClick={() => { navigator.vibrate?.(15); onTap(1) }}>
+        <b>+{step}</b>
+        <small>{what} · <span className="mono">{count}{need != null ? `/${need}` : ''}</span></small>
+      </button>
+    </div>
   )
 }
 

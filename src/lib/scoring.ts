@@ -12,6 +12,7 @@ export interface RoundEntry {
   capped: boolean
   partial_reps: number | null // capped: reps done on the movement they were on
   confirmed?: boolean // capped: judge pressed Save after entering partial reps
+  reps_done?: number // reps tapped so far on the current movement (live screen + pre-fills capped reps)
 }
 
 export interface ForTimeEntries { kind: 'for_time'; rounds: RoundEntry[] }
@@ -115,6 +116,38 @@ export function computeScore(part: WorkoutPart, sex: Sex, entries: Entries): Sco
     default:
       return { value: entries.value, complete: entries.value != null, capped: false, display: entries.value != null ? `${entries.value}${part.unit ? ' ' + part.unit : ''}` : '—', detail: [] }
   }
+}
+
+/** Reps one tap of the judge's + button counts for a movement. */
+export function tapStep(m: Pick<Movement, 'tap_step'> | undefined) {
+  return Math.max(1, m?.tap_step || 1)
+}
+
+/** Where a team is inside an AMRAP round: which movement, and reps done / needed on it. */
+export function amrapPosition(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, repsIntoRound: number) {
+  let start = 0
+  for (let i = 0; i < part.part_movements.length; i++) {
+    const m = part.part_movements[i]
+    const need = repsFor(m, sex)
+    if (repsIntoRound < start + need) return { index: i, movement: m, done: repsIntoRound - start, need }
+    start += need
+  }
+  return null
+}
+
+/** One tap (+1 = forward, -1 = back) on an AMRAP: moves through the movements and rolls over to the next round. */
+export function amrapTap(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, rounds: number, reps: number, dir: 1 | -1) {
+  const per = repsPerRound(part, sex)
+  if (per <= 0) return { rounds, reps: Math.max(0, reps + dir) }
+  if (dir > 0) {
+    const pos = amrapPosition(part, sex, reps)
+    const next = reps + (pos ? Math.min(tapStep(pos.movement), pos.need - pos.done) : 1)
+    return next >= per ? { rounds: rounds + 1, reps: 0 } : { rounds, reps: next }
+  }
+  let r = rounds, x = reps
+  if (x === 0) { if (r === 0) return { rounds: 0, reps: 0 }; r -= 1; x = per }
+  const pos = amrapPosition(part, sex, x - 1)
+  return { rounds: r, reps: Math.max(0, x - (pos ? Math.min(tapStep(pos.movement), pos.done + 1) : 1)) }
 }
 
 /** Max-load completeness needs to know who lifts: every athlete × lift (or every lift for the pair). */

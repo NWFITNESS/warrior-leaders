@@ -153,6 +153,8 @@ export async function flush(): Promise<'ok' | 'offline' | 'signed_out'> {
   } finally {
     syncing = false
     notify()
+    // taps that arrived while this sync was running go straight away (keeps the live screen current)
+    if (lastSyncError == null && Object.keys(read<Record<string, Pending>>(OUTBOX, {})).length) window.setTimeout(() => void flush(), 250)
   }
 }
 

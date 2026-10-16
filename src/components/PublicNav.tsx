@@ -6,6 +6,7 @@ const LINKS = [
   { href: '/schedule', label: 'Heats' },
   { href: '/workouts', label: 'Workouts' },
   { href: '/teams', label: 'Teams' },
+  { href: '/live', label: 'Live' },
 ]
 
 export function PublicNav({ current }: { current: string }) {

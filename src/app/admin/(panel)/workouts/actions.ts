@@ -94,6 +94,7 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
         scaled_reps: m.scaled_reps ?? null,
         scaled_reps_female: m.scaled_reps_female ?? null,
         scaled_standards: m.scaled_standards?.trim() || null,
+        tap_step: Math.min(50, Math.max(1, m.tap_step || 1)),
       }))
   )
   const { error: dErr } = await supabase.from('wl_part_movements').delete().in('part_id', partIds).not('id', 'in', `(${allMovements.map((m) => m.id).join(',') || '00000000-0000-0000-0000-000000000000'})`)

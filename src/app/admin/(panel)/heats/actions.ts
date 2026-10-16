@@ -56,3 +56,13 @@ export async function saveHeats(workoutId: string, heats: HeatInput[]): Promise<
   revalidatePath('/admin/heats')
   return { ok: true }
 }
+
+/** Pin a heat to the /live big screen ('' = follow the judges automatically). */
+export async function setLiveHeat(formData: FormData) {
+  const { supabase, actor } = await requireStaff()
+  const heat = String(formData.get('heat') ?? '') || null
+  const { error } = await supabase.from('wl_competition_settings').update({ live_heat_id: heat }).eq('id', 1)
+  if (error) throw new Error(error.message)
+  await audit(supabase, { actor, action: 'live.screen', entity: 'heat', entity_id: heat ?? undefined, after: { live_heat_id: heat } })
+  revalidatePath('/admin/heats')
+}
