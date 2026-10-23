@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 256">
+<g>
+<path fill="#000" d="M52,114 H148 A22,22 0 0 1 148,158 H52 A22,22 0 0 1 52,114 Z M52,170 H116 A22,22 0 0 1 116,214 H52 A22,22 0 0 1 52,170 Z M182,26 h12 V50 h-12 Z M182,110 h12 V206 h-12 Z M182,214 h12 V230 h-12 Z "/>
+<path fill="#000" d="M52,58 H174 V102 H52 A22,22 0 0 1 52,58 Z M202,58 H204 A22,22 0 0 1 204,102 H202 Z M182,58 h12 v44 h-12 Z"/>
+</g>
+<text x="284" y="118" font-family="League Spartan, Montserrat, Arial Black, sans-serif" font-weight="700" font-size="44" letter-spacing="6" fill="#000">THE WARRIOR</text>
+<text x="280" y="200" font-family="League Spartan, Montserrat, Arial Black, sans-serif" font-weight="800" font-size="92" letter-spacing="2" fill="#000">LEADERS</text>
+</svg>

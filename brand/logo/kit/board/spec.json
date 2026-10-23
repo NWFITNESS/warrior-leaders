@@ -1,0 +1,35 @@
+{
+  "brand": "Warrior Leaders",
+  "tagline": "Live judging and leaderboard · Northern Warrior Competitions",
+  "brief": "The judging, leaderboard and big-screen app for the Northern Warrior pairs competition. It has to be bold and competitive, read on a judge's phone, a browser tab and a TV, and sit in the Northern Warrior black-and-gold family.",
+  "adjectives": ["competitive", "live", "bold", "precise"],
+  "criteria": "Success: reads as WL at 16 px, no trophy/podium clichés, works in one colour and reversed, clearly part of Northern Warrior.",
+  "mockups": ["app-icon", "favicon-tab", "badge", "tshirt", "website", "social"],
+  "nav": ["Leaderboard", "Heats", "Live"],
+  "brand_color": "#aa8601",
+  "tile_color": "#0a0a0a",
+  "greyscale": false,
+  "final": true,
+  "designer": "Northern Warrior",
+  "concepts": [
+    {
+      "name": "Sprint WL",
+      "symbol": "../svg/symbol-colour.svg",
+      "lockup": "../svg/lockup-horizontal-colour.svg",
+      "symbol_on_tile": "../svg/symbol-reversed.svg",
+      "symbol_on_dark": "../svg/symbol-reversed.svg",
+      "lockup_on_dark": "../svg/lockup-horizontal-reversed.svg",
+      "stacked_on_tile": "../svg/lockup-stacked-reversed.svg",
+      "stacked_on_dark": "../svg/lockup-stacked-reversed.svg",
+      "idea": "A W that climbs peak by peak, and a gold L leaning forward beside it like a sprint finish.",
+      "rationale": [
+        "Every stroke at the same 75° lean: one motion, built on one stroke width",
+        "The climb says 'moving up the board'; the gold L is the leader",
+        "Black and gold ties it to Northern Warrior Competitions",
+        "Small-size cut with a wider W–L gap holds up at 16 px"
+      ]
+    }
+  ],
+  "recommendation": "Sprint WL with the two-line WARRIOR / LEADERS lockup as the main logo; the WL mark alone for the app icon, favicon and judge app.",
+  "next_steps": ["Swap the new icons and logo into leaders.northernwarrior.co.uk", "Print judge lanyards and the big-screen header", "Trademark search before wider use"]
+}

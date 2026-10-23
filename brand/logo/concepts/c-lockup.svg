@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 256">
+<g>
+<path fill="#000" fill-rule="evenodd" d="
+M 36,186 V 114 A 92,92 0 0 1 220,114 V 186 H 146 V 220 L 128,236 L 110,220 V 186 Z
+M 58,102 H 198 V 146 A 16,16 0 0 1 182,162 H 146 V 110 H 110 V 162 H 74 A 16,16 0 0 1 58,146 Z"/>
+<path fill="#000" d="M 110,110 L 110,136 L 84,151 L 84,125 Z"/>
+</g>
+<text x="284" y="118" font-family="League Spartan, Montserrat, Arial Black, sans-serif" font-weight="700" font-size="44" letter-spacing="6" fill="#000">THE WARRIOR</text>
+<text x="280" y="200" font-family="League Spartan, Montserrat, Arial Black, sans-serif" font-weight="800" font-size="92" letter-spacing="2" fill="#000">LEADERS</text>
+</svg>
