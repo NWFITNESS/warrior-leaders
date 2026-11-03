@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { SCORE_TYPES, TIEBREAK_RULES, formatCap, parseCap, partTitle, partTitleOr, tiebreakRule, type Movement, type ScoreType, type TiebreakRule, type Workout, type WorkoutPart } from '@/lib/types'
+import { SCORE_TYPES, TIEBREAK_RULES, formatCap, parseCap, partTitle, partTitleOr, resolvePart, tiebreakRule, type Movement, type ScoreType, type TiebreakRule, type Workout, type WorkoutPart } from '@/lib/types'
 import { deleteWorkout, duplicateWorkout, saveWorkout, type WorkoutInput } from '../actions'
 import { JudgePreview } from './judge-preview'
+import { repsPerRound } from '@/lib/scoring'
 
 type Part = Omit<WorkoutPart, 'part_movements'> & { id: string; capText: string; part_movements: Mv[] }
 type Mv = Movement & { id: string }
@@ -183,12 +184,16 @@ export function Builder({ workout }: { workout: Workout }) {
               </label>
             )}
             {p.score_type === 'for_time' && (
-              <label className="field">
-                <span>{p.rounds > 1 ? 'Reps per round (M)' : 'Total reps in workout'}</span>
-                <input className="input mono" inputMode="numeric"
-                  placeholder={String(p.part_movements.reduce((n, m) => n + (m.reps ?? 0), 0) || '')}
-                  value={p.total_reps ?? ''} onChange={(e) => updatePart(p.id, { total_reps: e.target.value ? Number(e.target.value.replace(/\D/g, '')) : null })} />
-              </label>
+              // worked out from each movement's RX / Scaled and male / female reps; used for capped rounds
+              <div className="field" style={{ gridColumn: 'span 2' }}>
+                <span>{p.rounds > 1 ? 'Reps per round' : 'Total reps'} by division</span>
+                <div className="reps-div">
+                  {([['RX M', 'rx', 'male'], ['RX F', 'rx', 'female'], ['Scaled M', 'scaled', 'male'], ['Scaled F', 'scaled', 'female']] as const).map(([label, level, sex]) => (
+                    <span key={label}><small>{label}</small><b className="mono">{repsPerRound(resolvePart(p, level), sex) || '—'}</b></span>
+                  ))}
+                </div>
+                <span className="hint">From the movements below. A capped round counts the reps missed out of this number for that team’s division.</span>
+              </div>
             )}
             {p.score_type === 'max_load' && (
               <div className="field">
