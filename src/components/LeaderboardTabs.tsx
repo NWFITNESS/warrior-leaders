@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { DivisionBoard } from '@/lib/public-data'
+import { ScoreLines } from './ScoreLines'
 
 const ordinal = (n: number) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]) }
 
@@ -94,6 +95,7 @@ export function BoardTable({ board, pinned, lowerWins, limit, linkTeams = true }
                                 <span className="pl">{res?.scored ? ordinal(res.place!) : '—'}</span>
                                 <span className="sc">{res?.display ?? '—'}</span>
                                 <span className="pt">{res?.points ?? 0} pts</span>
+                                {res?.breakdown && <div className="bd"><ScoreLines breakdown={res.breakdown} /></div>}
                               </li>
                             )
                           })}

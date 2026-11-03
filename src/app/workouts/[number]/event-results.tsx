@@ -37,7 +37,7 @@ export function EventResults({ results, linkTeams = true }: { results: EventDivi
                     <tr key={row.teamId}>
                       <td className="lb-rank">{row.scored && row.place ? ordinal(row.place) : '—'}</td>
                       <td className="lb-team">{linkTeams ? <Link href={`/teams/${row.teamId}`}>{row.team}</Link> : <a>{row.team}</a>}<small>{row.athletes}</small></td>
-                      <td className="mono" style={{ whiteSpace: 'nowrap' }}>{row.display}</td>
+                      <td className="mono" style={{ whiteSpace: 'nowrap' }}>{row.display}{row.breakdown?.capNote && <small className="cap-note">{row.breakdown.capNote}</small>}</td>
                       <td className="lb-pts">{row.points}</td>
                     </tr>
                   ))}

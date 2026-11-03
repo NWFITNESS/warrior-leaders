@@ -613,3 +613,13 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .ev-card .ev-go { margin-top: 6px; font-size: 0.85rem; font-weight: 600; color: var(--gold-hi); }
 
 .demo-banner { border-radius: 12px; padding: 10px 14px; background: rgba(127, 176, 255, 0.12); color: #9cc2ff; font-size: 0.9rem; font-weight: 600; text-align: center; }
+
+/* Score breakdown: each round under a total */
+.score-lines { display: grid; gap: 3px; margin-top: 6px; text-align: left; font-size: 0.82rem; color: var(--muted); }
+.score-lines .lbl { font-size: 0.74rem; color: var(--subtle); }
+.score-lines span:not(.lbl) { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.score-lines i { font-style: normal; color: var(--subtle); min-width: 62px; }
+.score-lines b { font-family: var(--f-mono); font-weight: 500; color: var(--text); }
+.score-lines em { font-style: normal; font-size: 0.76rem; color: var(--warn); }
+.lb-detail li .bd { grid-column: 1 / -1; margin-top: -2px; }
+.cap-note { display: block; font-family: var(--f-body); font-size: 0.72rem; color: var(--warn); margin-top: 2px; }

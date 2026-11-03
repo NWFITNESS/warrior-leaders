@@ -5,6 +5,7 @@ import { PublicNav } from '@/components/PublicNav'
 import { computeBoards, getBoardData, getSchedule } from '@/lib/public-data'
 import { buildEvents } from '@/lib/ranking'
 import { MyTeamButton } from './my-team'
+import { ScoreLines } from '@/components/ScoreLines'
 
 export const revalidate = 15
 
@@ -61,6 +62,7 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
                       <div className="small subtle">{r.scored ? `${ordinal(r.place!)} · ${r.points} pts` : `No score · ${r.points} pts`}</div>
                     </div>
                   ) : <span className="pill pill-dim">Not released yet</span>}
+                  {released.has(e.key) && r?.breakdown && <div style={{ flexBasis: '100%' }}><ScoreLines breakdown={r.breakdown} /></div>}
                 </div>
               )
             })}

@@ -192,6 +192,42 @@ export function autoTiebreak(part: WorkoutPart, sex: Sex, entries: Entries): { v
   return { value: tick ? tick.at : null, label: mv ? `end of ${mv.name}${nth}${entries.rounds.length > 1 ? ', round 1' : ''}` : 'movement not set' }
 }
 
+export interface ScoreBreakdown {
+  label: string // "Total of 4 rounds" / "Capped"
+  lines: { label: string; value: string; note?: string; capped?: boolean }[]
+  capNote: string | null // short: "1 capped round (+7 s)"
+}
+
+/** Plain-English breakdown of a for-time score: each round, and how a capped one was counted.
+ *  Pass the team's version of the part (resolvePart). Other score types need no breakdown. */
+export function scoreBreakdown(part: WorkoutPart, sex: Sex, entries: Entries): ScoreBreakdown | null {
+  if (entries.kind !== 'for_time' || part.time_cap_seconds == null) return null
+  const cap = part.time_cap_seconds
+  const per = repsPerRound(part, sex)
+  const multi = entries.rounds.length > 1
+  let cappedCount = 0, added = 0
+  const lines = entries.rounds.map((r, i) => {
+    const v = roundValue(part, sex, r)
+    const label = multi ? `Round ${i + 1}` : 'Result'
+    if (!v.capped || v.value == null) return { label, value: v.value != null ? formatTime(v.value) : '—' }
+    const done = cappedRoundReps(part, sex, r)
+    const missing = Math.max(0, per - done)
+    cappedCount++
+    const penalty = part.capped_round_rule === 'cap_only' ? 0 : missing
+    added += penalty
+    return {
+      label, value: formatTime(v.value, false), capped: true,
+      note: `capped · ${done} of ${per} reps${penalty ? ` · ${formatTime(cap, false)} + ${penalty} s` : ''}`,
+    }
+  })
+  if (!multi && !cappedCount) return null // a plain finish time explains itself
+  return {
+    label: multi ? `Total of ${entries.rounds.length} rounds` : 'Capped',
+    lines,
+    capNote: cappedCount ? `${cappedCount} capped round${multi && cappedCount > 1 ? 's' : ''}${added ? ` (+${added} s)` : ''}`.replace('1 capped round', multi ? '1 capped round' : 'Capped') : null,
+  }
+}
+
 /** Max-load completeness needs to know who lifts: every athlete × lift (or every lift for the pair). */
 export function loadComplete(part: WorkoutPart, athleteIds: string[], entries: LoadEntries) {
   const owners = part.load_entry === 'per_team' ? ['pair'] : athleteIds

@@ -53,7 +53,7 @@ export default async function AdminLeaderboard({ searchParams }: { searchParams:
           rows: standings.map((s) => ({
             teamId: s.team.id, team: s.team.name, rank: s.rank, total: s.total,
             athletes: ((teams ?? []).find((t) => t.id === s.team.id)?.athletes ?? []).sort((a, b) => a.position - b.position).map((a) => `${a.first_name} ${a.last_name}`.trim()).join(' & '),
-            results: Object.fromEntries(Object.entries(s.results).map(([k, r]) => [k, { place: r.place, points: r.points, display: r.display, scored: r.scored }])),
+            results: Object.fromEntries(Object.entries(s.results).map(([k, r]) => [k, { place: r.place, points: r.points, display: r.display, scored: r.scored, breakdown: null }])),
           })),
         }
         return (

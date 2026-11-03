@@ -1,7 +1,8 @@
 import 'server-only'
 import { createClient } from '@supabase/supabase-js'
-import { buildEvents, divisionStandings, isReleased, rankEvent, type RankScore, type RankWorkout, type Release } from './ranking'
-import type { Sex } from './scoring'
+import { buildEvents, divisionStandings, isReleased, rankEvent, type RankEvent, type RankScore, type RankWorkout, type Release } from './ranking'
+import { scoreBreakdown, type Entries, type ScoreBreakdown, type Sex } from './scoring'
+import { resolvePart } from './types'
 import type { PointsMethod } from './types'
 
 // Public pages read through SECURITY DEFINER functions that return only
@@ -43,6 +44,14 @@ export interface PublicBoard {
   scores: RankScore[]
 }
 
+/** How a team's score in one event breaks down (rounds, capped rounds). Single-part events only. */
+function breakdownFor(board: PublicBoard, event: RankEvent, teamId: string, d: PublicBoard['divisions'][number]) {
+  if (event.parts.length !== 1) return null
+  const s = board.scores.find((x) => x.part_id === event.parts[0].id && x.team_id === teamId)
+  const entries = s?.entries && 'kind' in s.entries ? (s.entries as Entries) : null
+  return entries ? scoreBreakdown(resolvePart(event.parts[0], d.level), d.sex, entries) : null
+}
+
 /** One workout's results, per division (only what's been released). Serializable for the event page. */
 export function eventResults(board: PublicBoard, workoutId: string) {
   const events = buildEvents(board.workouts).filter((e) => e.workout.id === workoutId)
@@ -55,7 +64,7 @@ export function eventResults(board: PublicBoard, workoutId: string) {
         const released = isReleased(e, d.id, board.releases)
         const ranked = released ? rankEvent(e, teams, board.scores, d.sex, board.settings.points_method, custom, d.level) : null
         const rows = ranked
-          ? teams.map((t) => ({ teamId: t.id, team: t.name, athletes: t.athletes.map((a) => `${a.first_name} ${a.last_name}`.trim()).join(' & '), ...ranked.get(t.id)! }))
+          ? teams.map((t) => ({ teamId: t.id, team: t.name, athletes: t.athletes.map((a) => `${a.first_name} ${a.last_name}`.trim()).join(' & '), ...ranked.get(t.id)!, breakdown: breakdownFor(board, e, t.id, d) }))
               .sort((a, b) => (a.place ?? 999) - (b.place ?? 999) || a.team.localeCompare(b.team))
           : []
         return { key: e.key, label: e.label, title: e.title, released, rows }
@@ -88,7 +97,7 @@ export function computeBoards(board: PublicBoard) {
         athletes: board.teams.find((t) => t.id === s.team.id)?.athletes.map((a) => `${a.first_name} ${a.last_name}`.trim()).join(' & ') ?? '',
         rank: s.rank,
         total: s.total,
-        results: Object.fromEntries(Object.entries(s.results).map(([k, r]) => [k, { place: r.place, points: r.points, display: r.display, scored: r.scored }])),
+        results: Object.fromEntries(Object.entries(s.results).map(([k, r]) => [k, { place: r.place, points: r.points, display: r.display, scored: r.scored, breakdown: breakdownFor(board, shown.find((e) => e.key === k)!, s.team.id, d) as ScoreBreakdown | null | undefined }])),
       })),
     }
   })
