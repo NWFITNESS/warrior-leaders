@@ -26,12 +26,14 @@ export interface Lane {
   start_time: string | null
   lane: number
   judge_name: string | null
-  workout: { id: string; number: number; name: string; description: string | null; status: string }
+  workout: { id: string; number: number; name: string; description: string | null; status: string; open_entry?: boolean }
   team: { id: string; name: string; division: string; level: 'rx' | 'scaled'; sex: 'male' | 'female' | 'mixed'; athletes: JudgeAthlete[] }
   parts: JudgePart[]
   scores: ServerScore[]
 }
-export interface Assignments { judge: { id: string; name: string; role: 'head' | 'lane' }; lanes: Lane[] }
+export interface OpenEventTeam { id: string; name: string; division: string; level: string; status: ServerScore['status'] | null }
+export interface OpenEvent { workout: { id: string; number: number; name: string }; teams: OpenEventTeam[] }
+export interface Assignments { judge: { id: string; name: string; role: 'head' | 'lane' }; lanes: Lane[]; open_events?: OpenEvent[] }
 
 // ── Safe localStorage ──────────────────────────────────────────────────────────
 function read<T>(key: string, fallback: T): T {
@@ -80,6 +82,16 @@ export async function fetchAssignments(): Promise<Assignments | { error: 'signed
   if (data?.error === 'signed_out') { remove(TOKEN); return { error: 'signed_out' } }
   write(CACHE, data)
   return data as Assignments
+}
+
+/** Side event: start scoring a team (needs signal). Returns the lane to open. */
+export async function openSideLane(workoutId: string, teamId: string): Promise<{ laneId: string } | { error: string }> {
+  const token = getToken()
+  if (!token) return { error: 'signed_out' }
+  const { data, error } = await db().rpc('wl_judge_open_lane', { p_token: token, p_workout: workoutId, p_team: teamId })
+  if (error) return { error: 'offline' }
+  if (data?.error) return { error: data.error }
+  return { laneId: data.lane_assignment_id }
 }
 
 // ── Drafts (this phone's copy of each score) ───────────────────────────────────

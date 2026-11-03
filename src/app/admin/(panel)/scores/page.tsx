@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export default async function ScoresPage({ searchParams }: { searchParams: Promise<{ workout?: string }> }) {
   const { workout: workoutParam } = await searchParams
   const { supabase } = await requireStaff()
-  const { data: workouts } = await supabase.from('wl_workouts').select('id, number, name, combine_parts').order('number')
+  const { data: workouts } = await supabase.from('wl_workouts').select('id, number, name, combine_parts, open_entry').order('number')
   if (!workouts?.length) {
     return (<><div className="stack-sm"><span className="eyebrow">Results</span><h1>Scores</h1></div><div className="empty">No workouts yet.</div></>)
   }
@@ -36,13 +36,16 @@ export default async function ScoresPage({ searchParams }: { searchParams: Promi
   const divById = new Map((divisions ?? []).map((d) => [d.id, d]))
 
   // every team that's in a heat for this workout or already has a score for it
-  const teamIds = new Set<string>([...laneByTeam.keys(), ...((scores ?? []) as { team_id: string }[]).map((s) => s.team_id)])
+  // side events: every team (no heats), so you can see who still has to do it
+  const teamIds = workout.open_entry
+    ? new Set<string>((teams ?? []).map((t) => t.id))
+    : new Set<string>([...laneByTeam.keys(), ...((scores ?? []) as { team_id: string }[]).map((s) => s.team_id)])
   const rows: BoardRow[] = (teams ?? [])
     .filter((t) => teamIds.has(t.id))
     .map((t) => {
       const l = laneByTeam.get(t.id)
       const d = divById.get(t.division_id)!
-      return { teamId: t.id, teamName: t.name, divisionId: d.id, divisionName: d.name, sex: d.sex as Sex, level: d.level, heat: l?.heat.number ?? null, lane: l?.lane ?? null, judge: l?.judge?.name ?? null }
+      return { teamId: t.id, teamName: t.name, divisionId: d.id, divisionName: d.name, sex: d.sex as Sex, level: d.level, heat: workout.open_entry ? null : l?.heat.number ?? null, lane: workout.open_entry ? null : l?.lane ?? null, judge: l?.judge?.name ?? null }
     })
     .sort((a, b) => (a.heat ?? 999) - (b.heat ?? 999) || (a.lane ?? 0) - (b.lane ?? 0) || a.teamName.localeCompare(b.teamName))
 
@@ -58,6 +61,7 @@ export default async function ScoresPage({ searchParams }: { searchParams: Promi
           <p className="small muted" style={{ maxWidth: '70ch' }}>
             Check each score, then release the results for each division. Nothing appears on the public leaderboard until it’s released.
           </p>
+          {workout.open_entry && <p className="notice" style={{ maxWidth: '70ch' }}>Event {workout.number} is a side event: judges score teams whenever they do it, so every team is listed. At the end of the day, check the scores, use <b>Verify all checked</b>, then release.</p>}
         </div>
         <Link href={`/admin/scores?workout=${workout.id}`} className="btn btn-ghost">Refresh</Link>
       </div>

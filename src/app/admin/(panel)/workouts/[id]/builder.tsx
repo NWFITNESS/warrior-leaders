@@ -31,6 +31,7 @@ export function Builder({ workout }: { workout: Workout }) {
   const [name, setName] = useState(workout.name)
   const [description, setDescription] = useState(workout.description ?? '')
   const [combine, setCombine] = useState(workout.combine_parts)
+  const [openEntry, setOpenEntry] = useState(!!workout.open_entry)
   const [status, setStatus] = useState(workout.status)
   const [parts, setParts] = useState<Part[]>(() =>
     [...(workout.workout_parts ?? [])]
@@ -71,6 +72,7 @@ export function Builder({ workout }: { workout: Workout }) {
       name,
       description,
       combine_parts: combine,
+      open_entry: openEntry,
       status,
       parts: parts.map(({ capText, ...p }) => ({ ...p, time_cap_seconds: parseCap(capText) })),
     }
@@ -116,6 +118,10 @@ export function Builder({ workout }: { workout: Workout }) {
             </select>
           </label>
         </div>
+        <label className="check">
+          <input type="checkbox" checked={openEntry} onChange={(e) => { touch(); setOpenEntry(e.target.checked) }} />
+          Side event: no heats. Judges pick any team and score them whenever they’re ready; scores wait in Admin → Scores to be checked.
+        </label>
         <label className="field">
           <span>Description (shown to athletes and judges)</span>
           <textarea id="w-desc" className="input" value={description} onChange={(e) => { touch(); setDescription(e.target.value) }} placeholder="e.g. Pairs, split reps any way. Part A then Part B with 2 minutes rest." />

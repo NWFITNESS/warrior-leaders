@@ -99,6 +99,7 @@ export interface Workout {
   name: string
   description: string | null
   combine_parts: boolean
+  open_entry?: boolean // side event: no heats, judges pick any team
   status: 'draft' | 'ready' | 'live' | 'complete'
   workout_parts?: WorkoutPart[]
 }

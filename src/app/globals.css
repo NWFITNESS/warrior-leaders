@@ -294,6 +294,12 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .j-agree input { accent-color: var(--j-accent); width: 20px; height: 20px; flex: none; margin: 0; }
 .j-submitted { display: grid; gap: 6px; justify-items: center; text-align: center; border-top: 1px solid var(--j-hair); padding-top: 12px; }
 
+.j-pick-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.j-search { width: 100%; height: 46px; border-radius: 12px; border: 1px solid var(--j-hair); background: var(--j-surface); color: var(--j-text); padding: 0 14px; font: inherit; font-size: 1rem; }
+.j-search:focus { outline: none; border-color: var(--j-accent); }
+.j-name .j-status { margin-left: auto; }
+.j-name:disabled { opacity: 0.6; }
+
 /* Captain signature + auto tiebreak */
 .j-sig { position: relative; border-radius: 12px; background: #f6f6f4; touch-action: none; overflow: hidden; }
 .j-sig svg { display: block; width: 100%; height: auto; aspect-ratio: 300 / 120; cursor: crosshair; }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Logo } from '@/components/Logo'
-import { fetchAssignments, getCachedAssignments, getToken, logout, startSyncLoop, type Assignments } from '@/lib/judge-client'
+import { fetchAssignments, getCachedAssignments, getToken, logout, openSideLane, startSyncLoop, type Assignments } from '@/lib/judge-client'
 import { SignIn } from './sign-in'
 import { LaneList } from './lane-list'
 import { LaneView } from './lane-view'
@@ -37,6 +37,17 @@ export default function JudgePage() {
   }, [refresh])
 
   const lane = data?.lanes.find((l) => l.lane_assignment_id === laneId) ?? null
+  const [sideError, setSideError] = useState('')
+
+  // side event: pick a team → get (or create) their lane → open the scoring screen
+  async function scoreTeam(workoutId: string, teamId: string) {
+    setSideError('')
+    const res = await openSideLane(workoutId, teamId)
+    if ('error' in res) { setSideError(res.error === 'offline' ? 'No signal. Move closer to the Wi-Fi and try again.' : 'Couldn’t open that team. Ask the head judge.'); return false }
+    await refresh()
+    setLaneId(res.laneId)
+    return true
+  }
 
   return (
     <main className="judge">
@@ -55,7 +66,7 @@ export default function JudgePage() {
               <span className="j-brand"><Logo width={40} variant="mark" /></span>
             )}
             <span className="j-title">
-              {lane ? `Lane ${lane.lane} · Heat ${lane.heat_number}` : <>{data.judge.name}{data.judge.role === 'head' && <small>Head judge</small>}</>}
+              {lane ? (lane.workout.open_entry ? `Event ${lane.workout.number} · Side event` : `Lane ${lane.lane} · Heat ${lane.heat_number}`) : <>{data.judge.name}{data.judge.role === 'head' && <small>Head judge</small>}</>}
             </span>
             <SyncBadge offline={offline} />
           </header>
@@ -64,7 +75,7 @@ export default function JudgePage() {
             <LaneView lane={lane} />
           ) : (
             <>
-              <LaneList lanes={data.lanes} onOpen={setLaneId} onRefresh={refresh} showJudge={data.judge.role === 'head'} />
+              <LaneList lanes={data.lanes} openEvents={data.open_events ?? []} onOpen={setLaneId} onRefresh={refresh} onScoreTeam={scoreTeam} sideError={sideError} showJudge={data.judge.role === 'head'} />
               <button type="button" className="j-tool" style={{ justifySelf: 'center', marginTop: 8 }}
                 onClick={async () => { await logout(); setData(null); setPhase('signin') }}>
                 Sign out
