@@ -36,8 +36,9 @@ function DivisionTag({ d }: { d?: Division }) {
   )
 }
 
-export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams, judges, initial }: {
+export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams, judges, initial, copySources = [] }: {
   workoutId: string; workout: Workout; lanesPerHeat: number; divisions: Division[]; teams: Team[]; judges: Judge[]; initial: HeatInput[]
+  copySources?: { workoutId: string; label: string; heats: HeatInput[] }[]
 }) {
   const [heats, setHeats] = useState<HeatInput[]>(() =>
     initial.map((h) => {
@@ -115,6 +116,24 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
         return h
       })
     })
+  }
+
+  /** Same teams in the same heats and lanes (and the same lane judges) as another event; times from this workout's plan. */
+  const [copyFrom, setCopyFrom] = useState(copySources[0]?.workoutId ?? '')
+  function copyLayout() {
+    const src = copySources.find((s) => s.workoutId === copyFrom)
+    if (!src) return
+    const teamIds = new Set(teams.map((t) => t.id))
+    const out: HeatInput[] = [...src.heats].sort((a, b) => a.number - b.number).map((h, i) => {
+      const lanes = blankLanes(Math.max(lanesPerHeat, ...h.lanes.map((l) => l.lane)))
+      for (const l of h.lanes) lanes[l.lane - 1] = { lane: l.lane, team_id: l.team_id && teamIds.has(l.team_id) ? l.team_id : null, judge_id: l.judge_id }
+      return { id: uid(), number: i + 1, start_time: null, lanes }
+    })
+    const from = src.heats.find((h) => h.number === 1)?.start_time ?? firstStart
+    setFirstStart(from)
+    touch()
+    setHeats(retime(out, from))
+    setMsg({ ok: `Copied ${out.length} heats from ${src.label}. Check the times, then Save.` })
   }
 
   function autofill() {
@@ -238,6 +257,15 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
           <button type="button" className="btn btn-ghost" onClick={applyLaneJudges} disabled={!heats.length}>Apply lane judges to every heat</button>
           {heats.length > 0 && <span className="small subtle">Filling replaces the heats below. Nothing is saved until you press Save.</span>}
         </div>
+        {copySources.length > 0 && (
+          <div className="row">
+            <select className="input" style={{ width: 'auto', minWidth: 240 }} aria-label="Copy heat layout from" value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)}>
+              {copySources.map((s) => <option key={s.workoutId} value={s.workoutId}>{s.label} ({s.heats.length} heats)</option>)}
+            </select>
+            <button type="button" className="btn btn-ghost" onClick={copyLayout}>Copy heat layout</button>
+            <span className="small subtle">Same teams, heats, lanes and judges. Times use this workout’s timing above. Replaces the heats below; nothing is saved until you press Save.</span>
+          </div>
+        )}
       </section>
 
       {/* ── Timing layout ── */}

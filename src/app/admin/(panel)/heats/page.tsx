@@ -36,6 +36,22 @@ export default async function HeatsPage({ searchParams }: { searchParams: Promis
   const { data: allHeats } = await supabase.from('wl_heats').select('id, number, start_time, workout:wl_workouts(number, name)').order('start_time', { nullsFirst: false })
   const pinned = settings?.live_heat_id ?? ''
 
+  // other events' heat layouts, for "Copy heat layout from…"
+  const { data: otherHeats } = await supabase
+    .from('wl_heats')
+    .select('id, number, start_time, workout_id, lanes:wl_lane_assignments(lane, team_id, judge_id)')
+    .neq('workout_id', workout.id)
+    .order('number')
+  const copySources = workouts
+    .filter((w) => w.id !== workout.id && !w.open_entry)
+    .map((w) => ({
+      workoutId: w.id,
+      label: `Event ${w.number} · ${w.name}`,
+      heats: (otherHeats ?? []).filter((h) => h.workout_id === w.id)
+        .map((h) => ({ id: h.id, number: h.number, start_time: h.start_time?.slice(0, 5) ?? null, lanes: h.lanes })),
+    }))
+    .filter((s) => s.heats.length > 0)
+
   return (
     <>
       <div className="spread">
@@ -93,6 +109,7 @@ export default async function HeatsPage({ searchParams }: { searchParams: Promis
         teams={teams ?? []}
         judges={judges ?? []}
         initial={(heats ?? []).map((h) => ({ id: h.id, number: h.number, start_time: h.start_time?.slice(0, 5) ?? null, lanes: h.lanes }))}
+        copySources={copySources}
       />
       )}
     </>
