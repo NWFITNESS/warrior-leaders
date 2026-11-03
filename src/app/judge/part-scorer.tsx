@@ -6,7 +6,7 @@ import {
   amrapPosition, amrapTap, autoTiebreak, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
 } from '@/lib/scoring'
-import { parseCap, partTitle, resolvePart, tiebreakRule } from '@/lib/types'
+import { loadForSex, parseCap, partTitle, resolvePart, tiebreakRule } from '@/lib/types'
 import { SignaturePad } from './signature-pad'
 import { Standards } from '@/components/Standards'
 
@@ -79,7 +79,8 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
     if (r) commit({ entries: r.entries }, r.events ?? [])
   }
 
-  const loadFor = (m: JudgePart['part_movements'][number]) => m.rx_load // already the team's version (resolvePart)
+  // the team's own weight: already their RX/Scaled version (resolvePart), then their M/F number (60/40kg → 60kg)
+  const loadFor = (m: JudgePart['part_movements'][number]) => loadForSex(m.rx_load, sex)
 
   return (
     <div className="j-scorer">

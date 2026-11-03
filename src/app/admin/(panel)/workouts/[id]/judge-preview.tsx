@@ -18,7 +18,7 @@ const DIVISIONS = [
 
 type PreviewPart = WorkoutPart & { id: string }
 
-export function JudgePreview({ number, name, description, parts }: { number: string; name: string; description: string; parts: PreviewPart[] }) {
+export function JudgePreview({ number, name, description, parts, openEntry = false }: { number: string; name: string; description: string; parts: PreviewPart[]; openEntry?: boolean }) {
   const [div, setDiv] = useState<(typeof DIVISIONS)[number]['key']>('rx-m')
   const [partId, setPartId] = useState<string | null>(null)
   const [run, setRun] = useState(0) // "Start again" remounts the scorer
@@ -27,7 +27,7 @@ export function JudgePreview({ number, name, description, parts }: { number: str
 
   const lane: Lane = {
     lane_assignment_id: 'preview', heat_id: 'preview', heat_number: 1, start_time: '09:00', lane: 1, judge_name: 'Preview',
-    workout: { id: 'preview', number: Number(number) || 0, name: name || 'Untitled', description: description || null, status: 'ready' },
+    workout: { id: 'preview', number: Number(number) || 0, name: name || 'Untitled', description: description || null, status: 'ready', open_entry: openEntry },
     team: {
       id: 'preview', name: 'Sample Team', division: d.label, level: d.level, sex: d.sex,
       athletes: [
@@ -58,7 +58,7 @@ export function JudgePreview({ number, name, description, parts }: { number: str
           <main className="judge" style={{ minHeight: 0 }}>
             <header className="j-top">
               <span className="j-back">‹ Lanes</span>
-              <span className="j-title">Lane 1 · Heat 1</span>
+              <span className="j-title">{openEntry ? `Event ${number || '?'} · Side event` : 'Lane 1 · Heat 1'}</span>
               <span className="j-sync ok"><i />Preview</span>
             </header>
             <div className="j-screen">

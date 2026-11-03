@@ -3,15 +3,19 @@
 import { useEffect, useState } from 'react'
 import type { Lane } from '@/lib/judge-client'
 import { PartScorer } from './part-scorer'
-import { partTitleOr } from '@/lib/types'
+import { partTitleOr, scoringSummary } from '@/lib/types'
 
 /** Team + workout header and the part tabs. The app bar (back, lane, sync) lives in page.tsx. */
 export function TeamHeader({ lane }: { lane: Lane }) {
+  const side = !!lane.workout.open_entry
+  const scored = lane.parts.filter((p) => p.scored)
   return (
     <div className="j-team">
+      {side && <span className={`j-level ${lane.team.level === 'scaled' ? 'sc' : 'rx'}`}>{lane.team.level === 'scaled' ? 'Scaled' : 'RX'}</span>}
       <h1>{lane.team.name}</h1>
       <p>{lane.team.division} · {lane.team.athletes.map((a) => a.first_name).join(' & ')}</p>
-      <p className="ev">Event {lane.workout.number} · {lane.workout.name}</p>
+      <p className="ev">Event {lane.workout.number} · {lane.workout.name}{side ? ' · side event' : ''}</p>
+      {side && scored.length > 0 && <p className="j-howto"><span>How it’s scored</span>{scored.map((p) => scoringSummary(p)).join(' · ')}</p>}
     </div>
   )
 }

@@ -125,6 +125,27 @@ export function scoreTypeLabel(t: ScoreType) {
   return SCORE_TYPES.find((s) => s.value === t)?.label ?? t
 }
 
+/** "60/40kg" → "60kg" for men, "40kg" for women (also 24/20"). Anything else is shown as written. */
+export function loadForSex(load: string | null | undefined, sex: string) {
+  if (!load) return load ?? null
+  const m = load.match(/^\s*(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)\s*(.*)$/)
+  if (!m || (sex !== 'male' && sex !== 'female')) return load
+  return `${sex === 'female' ? m[2] : m[1]}${m[3]}`
+}
+
+/** One line for judges: "Max reps in 2:00 · highest wins". */
+export function scoringSummary(p: Pick<WorkoutPart, 'score_type' | 'direction' | 'time_cap_seconds' | 'rounds'>) {
+  const cap = p.time_cap_seconds ? formatCap(p.time_cap_seconds) : null
+  const wins = p.direction === 'asc' ? 'lowest wins' : 'highest wins'
+  switch (p.score_type) {
+    case 'for_time': return `For time${p.rounds > 1 ? ` · ${p.rounds} rounds` : ''}${cap ? ` · ${cap} ${p.rounds > 1 ? 'window' : 'cap'}` : ''} · fastest wins`
+    case 'amrap': return `As many rounds + reps as possible${cap ? ` in ${cap}` : ''} · ${wins}`
+    case 'max_reps': return `Max reps${cap ? ` in ${cap}` : ''} · ${wins}`
+    case 'max_load': return `Heaviest successful lifts${cap ? ` in ${cap}` : ''} · ${wins}`
+    default: return wins.charAt(0).toUpperCase() + wins.slice(1)
+  }
+}
+
 export function formatCap(seconds: number | null) {
   if (seconds == null) return '—'
   const m = Math.floor(seconds / 60)

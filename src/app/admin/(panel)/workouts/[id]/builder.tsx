@@ -346,7 +346,7 @@ export function Builder({ workout }: { workout: Workout }) {
         )}
       </div>
     </div>
-    <JudgePreview number={number} name={name} description={description} parts={previewParts} />
+    <JudgePreview number={number} name={name} description={description} parts={previewParts} openEntry={openEntry} />
     </div>
   )
 }
