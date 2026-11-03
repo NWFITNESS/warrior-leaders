@@ -6,7 +6,7 @@ import type { DivisionBoard } from '@/lib/public-data'
 
 const ordinal = (n: number) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]) }
 
-export function LeaderboardTabs({ boards, lowerWins }: { boards: DivisionBoard[]; lowerWins: boolean }) {
+export function LeaderboardTabs({ boards, lowerWins, linkTeams = true }: { boards: DivisionBoard[]; lowerWins: boolean; linkTeams?: boolean }) {
   const [div, setDiv] = useState(boards[0]?.division.id)
   const [pinned, setPinned] = useState<string | null>(null)
 
@@ -34,7 +34,7 @@ export function LeaderboardTabs({ boards, lowerWins }: { boards: DivisionBoard[]
       {board.events.length === 0 ? (
         <div className="empty">No results released for {board.division.name} yet. They’ll appear here as soon as the judges release each workout.</div>
       ) : (
-        <BoardTable board={board} pinned={pinned} lowerWins={lowerWins} />
+        <BoardTable board={board} pinned={pinned} lowerWins={lowerWins} linkTeams={linkTeams} />
       )}
       <p className="small subtle">
         {lowerWins ? 'Points = finishing place in each event (1st = 1). Lowest total wins.' : 'Highest total wins.'} Tap a team to see their scores and heats.
@@ -43,7 +43,7 @@ export function LeaderboardTabs({ boards, lowerWins }: { boards: DivisionBoard[]
   )
 }
 
-export function BoardTable({ board, pinned, lowerWins, limit }: { board: DivisionBoard; pinned?: string | null; lowerWins: boolean; limit?: number }) {
+export function BoardTable({ board, pinned, lowerWins, limit, linkTeams = true }: { board: DivisionBoard; pinned?: string | null; lowerWins: boolean; limit?: number; linkTeams?: boolean }) {
   const rows = limit ? board.rows.slice(0, limit) : board.rows
   return (
     <div className="table-wrap">
@@ -61,7 +61,7 @@ export function BoardTable({ board, pinned, lowerWins, limit }: { board: Divisio
             <tr key={r.teamId} className={r.teamId === pinned ? 'pinned' : undefined}>
               <td className="lb-rank">{r.rank}</td>
               <td className="lb-team">
-                <Link href={`/teams/${r.teamId}`}>{r.team}</Link>
+                {linkTeams ? <Link href={`/teams/${r.teamId}`}>{r.team}</Link> : <a>{r.team}</a>}
                 <small>{r.athletes}</small>
               </td>
               {board.events.map((e) => {

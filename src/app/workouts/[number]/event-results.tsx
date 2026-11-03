@@ -7,7 +7,7 @@ import type { EventDivisionResults } from '@/lib/public-data'
 const ordinal = (n: number) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]) }
 
 /** This event's results, one category at a time (RX / Scaled, men / women). */
-export function EventResults({ results }: { results: EventDivisionResults[] }) {
+export function EventResults({ results, linkTeams = true }: { results: EventDivisionResults[]; linkTeams?: boolean }) {
   const [div, setDiv] = useState(results[0]?.division.id)
   useEffect(() => {
     try { const d = localStorage.getItem('wl-division'); if (d && results.some((r) => r.division.id === d)) setDiv(d) } catch { /* storage blocked */ }
@@ -36,7 +36,7 @@ export function EventResults({ results }: { results: EventDivisionResults[] }) {
                   {e.rows.map((row) => (
                     <tr key={row.teamId}>
                       <td className="lb-rank">{row.scored && row.place ? ordinal(row.place) : '—'}</td>
-                      <td className="lb-team"><Link href={`/teams/${row.teamId}`}>{row.team}</Link><small>{row.athletes}</small></td>
+                      <td className="lb-team">{linkTeams ? <Link href={`/teams/${row.teamId}`}>{row.team}</Link> : <a>{row.team}</a>}<small>{row.athletes}</small></td>
                       <td className="mono" style={{ whiteSpace: 'nowrap' }}>{row.display}</td>
                       <td className="lb-pts">{row.points}</td>
                     </tr>

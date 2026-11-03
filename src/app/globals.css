@@ -586,3 +586,5 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .ev-card .ev-line em { font-style: normal; color: var(--text); }
 .ev-card .ev-mv { font-size: 0.8rem; color: var(--subtle); line-height: 1.4; }
 .ev-card .ev-go { margin-top: 6px; font-size: 0.85rem; font-weight: 600; color: var(--gold-hi); }
+
+.demo-banner { border-radius: 12px; padding: 10px 14px; background: rgba(127, 176, 255, 0.12); color: #9cc2ff; font-size: 0.9rem; font-weight: 600; text-align: center; }
