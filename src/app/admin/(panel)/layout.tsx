@@ -10,8 +10,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     <div className="admin">
       <aside className="admin-side">
         <div className="admin-brand">
-          <Logo width={196} />
-          <span>The Warrior Leaders</span>
+          <Logo width={190} />
+          <span>Admin</span>
         </div>
         <AdminNav />
         <div className="admin-foot">

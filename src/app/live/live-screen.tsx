@@ -70,7 +70,7 @@ export function LiveScreen({ mode, heatId, at }: { mode: 'split' | 'race' | 'hea
   return (
     <main className={`live live-${mode}`}>
       <header className="live-head">
-        <Logo width={170} />
+        <Logo width={260} />
         <div className="live-title">
           {heat ? (
             <>

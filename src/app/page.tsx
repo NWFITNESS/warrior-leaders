@@ -16,7 +16,7 @@ export default async function Home() {
       <AutoRefresh seconds={30} />
       <PublicNav current="/" />
       <header className="stack-sm" style={{ textAlign: 'center', justifyItems: 'center' }}>
-        <h1 className="wordmark" style={{ fontSize: 'clamp(2rem, 7vw, 3rem)' }}>The Warrior <b>Leaders</b></h1>
+        <h1 className="wordmark" style={{ fontSize: 'clamp(2rem, 7vw, 3rem)' }}>Warrior <b>Leaders</b></h1>
         {date && (
           <p className="muted">
             {date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}

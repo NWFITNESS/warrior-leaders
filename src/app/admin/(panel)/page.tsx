@@ -36,7 +36,7 @@ export default async function Overview() {
       <div className="spread">
         <div className="stack-sm">
           <span className="eyebrow">{settings?.venue ?? 'Northern Warrior'}</span>
-          <h1>{settings?.name ?? 'The Warrior Leaders'}</h1>
+          <h1>{settings?.name ?? 'Warrior Leaders'}</h1>
           <p className="muted">
             {eventDate?.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             {days != null && days >= 0 && <> · <b style={{ color: 'var(--gold-hi)' }}>{days} days to go</b></>}

@@ -6,7 +6,7 @@ import { previewEmail, sendEmail, type EmailDraft } from './actions'
 const TEMPLATES: { name: string; subject: string; body: string }[] = [
   {
     name: 'Heat times',
-    subject: 'Your heat times for The Warrior Leaders',
+    subject: 'Your heat times for Warrior Leaders',
     body: `Hi {first_name},
 
 Here are the heat times for {team} ({division}):
@@ -22,17 +22,17 @@ Northern Warrior`,
   },
   {
     name: 'General update',
-    subject: 'The Warrior Leaders: update',
+    subject: 'Warrior Leaders: update',
     body: `Hi {first_name},
 
 `,
   },
   {
     name: 'Final results',
-    subject: 'The Warrior Leaders: final results',
+    subject: 'Warrior Leaders: final results',
     body: `Hi {first_name},
 
-Thank you for competing at The Warrior Leaders. The final results are now on the leaderboard: https://leaders.northernwarrior.co.uk
+Thank you for competing at Warrior Leaders. The final results are now on the leaderboard: https://leaders.northernwarrior.co.uk
 
 See how {team} got on: {team_link}
 

@@ -12,7 +12,7 @@ export default async function WorkoutsPage() {
   return (
     <main className="public">
       <PublicNav current="/workouts" />
-      <header className="stack-sm"><span className="eyebrow">The Warrior Leaders</span><h1>Workouts</h1></header>
+      <header className="stack-sm"><span className="eyebrow">Warrior Leaders</span><h1>Workouts</h1></header>
       {workouts.length === 0 && <div className="empty">Workouts will be announced soon.</div>}
       {workouts.map((w) => (
         <section key={w.id} className="card stack" style={{ gap: 14 }}>

@@ -38,9 +38,9 @@ export function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
 
   return (
     <div className="stack" style={{ paddingTop: 12 }}>
-      <div style={{ justifySelf: 'center' }}><Logo width={200} /></div>
+      <div style={{ justifySelf: 'center' }}><Logo width={170} variant="stacked" /></div>
       <div className="stack-sm" style={{ textAlign: 'center' }}>
-        <span className="eyebrow">The Warrior Leaders · Judges</span>
+        <span className="eyebrow">Judges</span>
         <h1 style={{ fontSize: '1.8rem' }}>{judge ? `Hi ${judge.name.split(' ')[0]}` : 'Who’s judging?'}</h1>
       </div>
 

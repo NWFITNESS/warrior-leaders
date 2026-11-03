@@ -12,13 +12,14 @@ const leagueSpartan = League_Spartan({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://leaders.northernwarrior.co.uk'),
-  title: { default: 'The Warrior Leaders', template: '%s · The Warrior Leaders' },
-  description: 'Live leaderboard for The Warrior Leaders competition by Northern Warrior Competitions.',
+  title: { default: 'Warrior Leaders', template: '%s · Warrior Leaders' },
+  description: 'Live leaderboard for Warrior Leaders by Northern Warrior Competitions.',
   icons: {
-    icon: [{ url: '/icon-32.png', sizes: '32x32', type: 'image/png' }, { url: '/icon-256.png', sizes: '256x256', type: 'image/png' }],
-    apple: [{ url: '/apple-icon.png', sizes: '180x180' }],
+    icon: [{ url: '/favicon.ico', sizes: '48x48' }, { url: '/favicon.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
-  openGraph: { images: ['/nw-competitions-logo-900.png'] },
+  manifest: '/site.webmanifest',
+  openGraph: { images: [{ url: '/brand/og.png', width: 1200, height: 630 }] },
 }
 
 export const viewport: Viewport = {

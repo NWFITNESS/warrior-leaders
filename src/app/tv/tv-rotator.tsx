@@ -19,10 +19,10 @@ export function TvRotator({ boards, lowerWins }: { boards: DivisionBoard[]; lowe
   return (
     <main className="tv">
       <header className="spread" style={{ alignItems: 'center' }}>
-        <Logo width={220} />
+        <Logo width={360} />
         <div style={{ textAlign: 'right' }}>
-          <div className="wordmark" style={{ fontSize: '3vw' }}>The Warrior <b>Leaders</b></div>
-          {board && <div className="eyebrow" style={{ fontSize: '1.4vw' }}>{board.division.name}</div>}
+          <div className="eyebrow" style={{ fontSize: '0.9vw' }}>Leaderboard</div>
+          {board && <div className="wordmark" style={{ fontSize: '2.6vw' }}>{board.division.name}</div>}
         </div>
       </header>
       {!board ? null : board.events.length === 0 ? (

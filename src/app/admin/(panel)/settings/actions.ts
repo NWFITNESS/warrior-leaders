@@ -21,7 +21,7 @@ export async function saveSettings(_prev: { ok?: boolean; error?: string }, form
   if (!Number.isInteger(lanes) || lanes < 1 || lanes > 30) return { error: 'Lanes per heat must be between 1 and 30.' }
 
   const row = {
-    name: String(formData.get('name') ?? '').trim() || 'The Warrior Leaders',
+    name: String(formData.get('name') ?? '').trim() || 'Warrior Leaders',
     event_date: String(formData.get('event_date')),
     venue: String(formData.get('venue') ?? '').trim(),
     points_method: method,

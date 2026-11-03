@@ -11,9 +11,8 @@ export default function LoginPage() {
     <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 16 }}>
       <form action={action} className="card stack" style={{ width: '100%', maxWidth: 380, padding: 28 }}>
         <div className="stack-sm" style={{ justifyItems: 'center', textAlign: 'center' }}>
-          <Logo width={260} />
-          <span className="eyebrow" style={{ marginTop: 6 }}>The Warrior Leaders</span>
-          <h1 style={{ fontSize: '1.7rem' }}>Admin sign in</h1>
+          <Logo width={190} variant="stacked" />
+          <h1 style={{ fontSize: '1.7rem', marginTop: 10 }}>Admin sign in</h1>
           <p className="muted small">Sign in with your NWHub staff login.</p>
         </div>
         <label className="field">

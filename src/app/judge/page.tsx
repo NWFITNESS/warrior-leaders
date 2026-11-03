@@ -50,7 +50,7 @@ export default function JudgePage() {
         <>
           <header className="j-top">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Logo width={72} />
+              <Logo width={48} variant="mark" />
               <span className="who">{data.judge.name}{data.judge.role === 'head' ? ' · Head judge' : ''}</span>
             </div>
             <SyncBadge offline={offline} />

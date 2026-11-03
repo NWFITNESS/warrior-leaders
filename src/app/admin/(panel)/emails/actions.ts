@@ -56,10 +56,10 @@ function render(draft: EmailDraft, r: Recipient) {
   const html = `<!doctype html><html><body style="margin:0;background:#f4f4f4;font-family:Helvetica,Arial,sans-serif;color:#111">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:10px;overflow:hidden">
-<tr><td style="background:#0a0a0a;padding:22px;text-align:center"><img src="${SITE}/nw-competitions-logo-900.png" width="220" alt="Northern Warrior Competitions" style="display:inline-block;width:220px;height:auto"></td></tr>
+<tr><td style="background:#0a0a0a;padding:22px;text-align:center"><img src="${SITE}/brand/logo-horizontal-email.png" width="300" height="61" alt="Warrior Leaders" style="display:inline-block;width:300px;height:auto"></td></tr>
 <tr><td style="padding:26px 26px 10px;font-size:15px">${paragraphs}</td></tr>
 <tr><td style="padding:0 26px 26px"><a href="${SITE}/teams/${r.teamId}" style="display:inline-block;background:#c9a70a;color:#0a0a0a;text-decoration:none;font-weight:bold;padding:12px 18px;border-radius:8px">View your team page</a></td></tr>
-<tr><td style="padding:16px 26px;background:#fafafa;font-size:12px;color:#777">The Warrior Leaders · Northern Warrior. You’re receiving this because you entered the competition. Reply to this email with any questions.</td></tr>
+<tr><td style="padding:16px 26px;background:#fafafa;font-size:12px;color:#777">Warrior Leaders · Northern Warrior Competitions. You’re receiving this because you entered the competition. Reply to this email with any questions.</td></tr>
 </table></td></tr></table></body></html>`
   return { subject: fill(draft.subject, r), html, text: `${text}\n\nYour team page: ${SITE}/teams/${r.teamId}` }
 }

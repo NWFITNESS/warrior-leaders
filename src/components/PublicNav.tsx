@@ -12,7 +12,7 @@ const LINKS = [
 export function PublicNav({ current }: { current: string }) {
   return (
     <header className="pub-nav">
-      <Link href="/" aria-label="The Warrior Leaders home"><Logo width={150} /></Link>
+      <Link href="/" aria-label="Warrior Leaders home"><Logo width={190} /></Link>
       <nav aria-label="Main">
         {LINKS.map((l) => <Link key={l.href} href={l.href} aria-current={l.href === current ? 'page' : undefined}>{l.label}</Link>)}
       </nav>
