@@ -359,15 +359,40 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .lb-team small { display: block; color: var(--subtle); font-size: 0.8rem; margin-top: 2px; }
 .lb-ev b { display: block; font-weight: 700; }
 .lb-ev small { display: block; color: var(--subtle); font-size: 0.74rem; white-space: nowrap; }
-.lb-pts { font-weight: 800; font-size: 1.2rem; width: 64px; }
-@media (max-width: 640px) { .lb-ev small, .lb-team small { display: none; } .lb-table td { padding: 10px 5px 8px; } }
+.lb-pts { font-weight: 800; font-size: 1.2rem; width: 64px; white-space: nowrap; }
+.lb-row { cursor: pointer; }
+.lb-row:hover td { background: #161616; }
+.lb-name { color: var(--text); font-weight: 700; font-size: 1.02rem; }
+.lb-chev { font-style: normal; font-size: 0.7rem; color: var(--subtle); margin-left: 6px; vertical-align: middle; }
+.lb-row.open td { border-bottom-color: transparent; border-radius: 0; }
+.lb-row.open td:first-child { border-radius: 10px 0 0 0; }
+.lb-row.open td:last-child { border-radius: 0 10px 0 0; }
+.lb-table tr.lb-detail td { text-align: left; padding: 4px 14px 14px; border-top: 0; border-radius: 0 0 10px 10px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.lb-detail ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.lb-detail li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 12px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line); }
+.lb-detail li:first-child { border-top: 0; }
+.lb-detail .ev { display: grid; min-width: 0; line-height: 1.2; }
+.lb-detail .ev b { font-size: 0.92rem; }
+.lb-detail .ev small { font-size: 0.76rem; color: var(--subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-detail .pl { font-weight: 800; color: var(--gold-hi); }
+.lb-detail .sc { font-family: var(--f-mono); font-size: 0.86rem; color: var(--muted); white-space: nowrap; }
+.lb-detail .pt { font-size: 0.82rem; color: var(--subtle); white-space: nowrap; }
+.lb-detail .lb-more, .lb-detail .lb-none { display: inline-block; margin-top: 8px; font-size: 0.86rem; }
+.lb-detail .lb-none { color: var(--subtle); }
+/* phones: rank, team, points only; tap a team for every event */
+@media (max-width: 640px) {
+  .lb-table th:not(:first-child):not(.l):not(:last-child), .lb-table td.lb-ev { display: none; }
+  .lb-team small { display: none; }
+  .lb-table td { padding: 12px 8px 10px; }
+}
 
 /* ── TV mode ────────────────────────────────────────────────────────────────── */
 .tv { min-height: 100vh; padding: 3vh 3vw; display: grid; grid-template-rows: auto 1fr auto; gap: 2vh; }
 .tv .lb-table { font-size: 1.5vw; border-spacing: 0 0.6vh; }
 .tv .lb-table th { font-size: 1vw; }
 .tv .lb-rank { font-size: 2.4vw; width: 5vw; }
-.tv .lb-team a { font-size: 1.7vw; }
+.tv .lb-team a, .tv .lb-name { font-size: 1.7vw; }
+.tv .lb-chev { display: none; }
 .tv .lb-team small, .tv .lb-ev small { display: block; font-size: 0.95vw; }
 .tv .lb-pts { font-size: 2.2vw; width: 7vw; }
 .tv .lb-table td { padding: 1vh 0.6vw; }

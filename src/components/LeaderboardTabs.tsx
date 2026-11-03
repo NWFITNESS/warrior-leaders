@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { DivisionBoard } from '@/lib/public-data'
 
@@ -43,6 +43,7 @@ export function LeaderboardTabs({ boards, lowerWins, linkTeams = true }: { board
 }
 
 export function BoardTable({ board, pinned, lowerWins, limit, linkTeams = true }: { board: DivisionBoard; pinned?: string | null; lowerWins: boolean; limit?: number; linkTeams?: boolean }) {
+  const [open, setOpen] = useState<string | null>(null)
   const rows = limit ? board.rows.slice(0, limit) : board.rows
   return (
     <div className="table-wrap">
@@ -56,25 +57,55 @@ export function BoardTable({ board, pinned, lowerWins, limit, linkTeams = true }
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
-            <tr key={r.teamId} className={r.teamId === pinned ? 'pinned' : undefined}>
-              <td className="lb-rank">{board.events.length ? r.rank : '–'}</td>
-              <td className="lb-team">
-                {linkTeams ? <Link href={`/teams/${r.teamId}`}>{r.team}</Link> : <a>{r.team}</a>}
-                <small>{r.athletes}</small>
-              </td>
-              {board.events.map((e) => {
-                const res = r.results[e.key]
-                return (
-                  <td key={e.key} className="lb-ev">
-                    <b>{res?.scored ? ordinal(res.place!) : '—'}</b>
-                    <small>{res?.display ?? ''}</small>
+          {rows.map((r) => {
+            const isOpen = open === r.teamId
+            return (
+              <Fragment key={r.teamId}>
+                {/* tap a team to see every event's result (the event columns are hidden on phones) */}
+                <tr className={`lb-row${r.teamId === pinned ? ' pinned' : ''}${isOpen ? ' open' : ''}`} onClick={() => setOpen(isOpen ? null : r.teamId)} aria-expanded={isOpen}>
+                  <td className="lb-rank">{board.events.length ? r.rank : '–'}</td>
+                  <td className="lb-team">
+                    <span className="lb-name">{r.team}</span>
+                    <small>{r.athletes}</small>
                   </td>
-                )
-              })}
-              <td className="lb-pts">{r.total}</td>
-            </tr>
-          ))}
+                  {board.events.map((e) => {
+                    const res = r.results[e.key]
+                    return (
+                      <td key={e.key} className="lb-ev">
+                        <b>{res?.scored ? ordinal(res.place!) : '—'}</b>
+                        <small>{res?.display ?? ''}</small>
+                      </td>
+                    )
+                  })}
+                  <td className="lb-pts">{r.total}<i className="lb-chev" aria-hidden>{isOpen ? '▴' : '▾'}</i></td>
+                </tr>
+                {isOpen && (
+                  <tr className="lb-detail">
+                    <td colSpan={board.events.length + 3}>
+                      {board.events.length === 0 ? (
+                        <p className="lb-none">No results released yet.</p>
+                      ) : (
+                        <ul>
+                          {board.events.map((e) => {
+                            const res = r.results[e.key]
+                            return (
+                              <li key={e.key}>
+                                <span className="ev"><b>Event {e.label}</b><small>{e.title}</small></span>
+                                <span className="pl">{res?.scored ? ordinal(res.place!) : '—'}</span>
+                                <span className="sc">{res?.display ?? '—'}</span>
+                                <span className="pt">{res?.points ?? 0} pts</span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                      {linkTeams && <Link href={`/teams/${r.teamId}`} className="lb-more" onClick={(ev) => ev.stopPropagation()}>Team page, heats &amp; scores →</Link>}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            )
+          })}
         </tbody>
       </table>
     </div>
