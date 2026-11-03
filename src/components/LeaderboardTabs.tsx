@@ -31,11 +31,10 @@ export function LeaderboardTabs({ boards, lowerWins, linkTeams = true }: { board
         ))}
       </div>
 
-      {board.events.length === 0 ? (
-        <div className="empty">No results released for {board.division.name} yet. They’ll appear here as soon as the judges release each workout.</div>
-      ) : (
-        <BoardTable board={board} pinned={pinned} lowerWins={lowerWins} linkTeams={linkTeams} />
+      {board.events.length === 0 && (
+        <p className="notice">No results released for {board.division.name} yet. Every team starts on 0 points; places appear as each workout is released.</p>
       )}
+      <BoardTable board={board} pinned={pinned} lowerWins={lowerWins} linkTeams={linkTeams} />
       <p className="small subtle">
         {lowerWins ? 'Points = finishing place in each event (1st = 1). Lowest total wins.' : 'Highest total wins.'} Tap a team to see their scores and heats.
       </p>
@@ -59,7 +58,7 @@ export function BoardTable({ board, pinned, lowerWins, limit, linkTeams = true }
         <tbody>
           {rows.map((r) => (
             <tr key={r.teamId} className={r.teamId === pinned ? 'pinned' : undefined}>
-              <td className="lb-rank">{r.rank}</td>
+              <td className="lb-rank">{board.events.length ? r.rank : '–'}</td>
               <td className="lb-team">
                 {linkTeams ? <Link href={`/teams/${r.teamId}`}>{r.team}</Link> : <a>{r.team}</a>}
                 <small>{r.athletes}</small>
