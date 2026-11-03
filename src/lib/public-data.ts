@@ -1,6 +1,6 @@
 import 'server-only'
 import { createClient } from '@supabase/supabase-js'
-import { buildEvents, divisionStandings, type RankScore, type RankWorkout, type Release } from './ranking'
+import { buildEvents, divisionStandings, isReleased, rankEvent, type RankScore, type RankWorkout, type Release } from './ranking'
 import type { Sex } from './scoring'
 import type { PointsMethod } from './types'
 
@@ -38,10 +38,32 @@ export interface PublicBoard {
   settings: { name: string; event_date: string; venue: string; points_method: PointsMethod; custom_points: number[]; overall_tiebreak: string }
   divisions: { id: string; name: string; sex: Sex; level: string }[]
   teams: { id: string; name: string; division_id: string; athletes: { first_name: string; last_name: string }[] }[]
-  workouts: RankWorkout[]
+  workouts: (RankWorkout & { description?: string | null; open_entry?: boolean })[]
   releases: Release[]
   scores: RankScore[]
 }
+
+/** One workout's results, per division (only what's been released). Serializable for the event page. */
+export function eventResults(board: PublicBoard, workoutId: string) {
+  const events = buildEvents(board.workouts).filter((e) => e.workout.id === workoutId)
+  const custom = board.settings.custom_points ?? []
+  return board.divisions.map((d) => {
+    const teams = board.teams.filter((t) => t.division_id === d.id)
+    return {
+      division: { id: d.id, name: d.name },
+      events: events.map((e) => {
+        const released = isReleased(e, d.id, board.releases)
+        const ranked = released ? rankEvent(e, teams, board.scores, d.sex, board.settings.points_method, custom, d.level) : null
+        const rows = ranked
+          ? teams.map((t) => ({ teamId: t.id, team: t.name, athletes: t.athletes.map((a) => `${a.first_name} ${a.last_name}`.trim()).join(' & '), ...ranked.get(t.id)! }))
+              .sort((a, b) => (a.place ?? 999) - (b.place ?? 999) || a.team.localeCompare(b.team))
+          : []
+        return { key: e.key, label: e.label, title: e.title, released, rows }
+      }),
+    }
+  })
+}
+export type EventDivisionResults = ReturnType<typeof eventResults>[number]
 
 export async function getBoardData() {
   const { data } = await anon().rpc('wl_public_leaderboard')

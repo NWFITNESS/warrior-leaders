@@ -41,6 +41,9 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
   const submitted = draft.status === 'submitted'
 
   const rule = tiebreakRule(part)
+  // AMRAP / max reps / max load countdown: a +rep tap starts it if the judge hasn't
+  const [clockStart, setClockStart] = useState<number | null>(null)
+  const startClock = (dir: 1 | -1) => { if (dir > 0 && clockStart == null && part.time_cap_seconds != null) setClockStart(Date.now()) }
   const auto = autoTiebreak(part, sex, draft.entries)
 
   function commit(next: Partial<Draft>, events: JudgeEvent[] = [], status: Draft['status'] = 'draft') {
@@ -91,23 +94,23 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
       <fieldset disabled={locked || submitted} className="j-fields">
         {draft.entries.kind === 'for_time' && (
           <ForTime part={part} sex={sex} entries={draft.entries} loadFor={loadFor} onChange={setEntries}
-            onTap={(dir) => tapEntries((e) => { if (e.kind !== 'for_time') return null; const t = forTimeTap(part, sex, e, dir, Date.now()); return t && { entries: t.entries, events: t.tick ? [ev('tick', { ...t.tick, via: 'tap' })] : [] } })} />
+            onTap={(dir) => tapEntries((e) => { if (e.kind !== 'for_time') return null; const t = forTimeTap(part, sex, e, dir, Date.now()); return t && { entries: t.entries, events: [...(t.started ? [ev('start', { round: t.round, via: 'tap' })] : []), ...(t.tick ? [ev('tick', { ...t.tick, via: 'tap' })] : [])] } })} />
         )}
         {draft.entries.kind === 'amrap' && (
-          <Amrap part={part} sex={sex} loadFor={loadFor} entries={draft.entries} onChange={setEntries}
-            onTap={(dir) => tapEntries((e) => e.kind === 'amrap' ? { entries: { kind: 'amrap', ...amrapTap(part, sex, e.rounds ?? 0, e.reps ?? 0, dir) } } : null)} />
+          <Amrap part={part} sex={sex} loadFor={loadFor} entries={draft.entries} onChange={setEntries} clock={<CapClock part={part} start={clockStart} setStart={setClockStart} />}
+            onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'amrap' ? { entries: { kind: 'amrap', ...amrapTap(part, sex, e.rounds ?? 0, e.reps ?? 0, dir) } } : null) }} />
         )}
         {draft.entries.kind === 'max_reps' && (
           <>
             <MovementList part={part} sex={sex} loadFor={loadFor} />
-            <CapClock part={part} />
+            <CapClock part={part} start={clockStart} setStart={setClockStart} />
             <TapPad what="Total reps" count={draft.entries.reps ?? 0} step={tapStep(part.part_movements[0])}
-              onTap={(dir) => tapEntries((e) => e.kind === 'max_reps' ? { entries: { kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null)} />
+              onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'max_reps' ? { entries: { kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null) }} />
             <Stepper label="Total reps" value={draft.entries.reps} onChange={(v) => setEntries({ kind: 'max_reps', reps: v }, [ev('input', { reps: v })])} />
           </>
         )}
         {draft.entries.kind === 'max_load' && (
-          <MaxLoad part={part} lane={lane} loadFor={loadFor} entries={draft.entries} onChange={setEntries} />
+          <MaxLoad part={part} lane={lane} loadFor={loadFor} entries={draft.entries} onChange={setEntries} clock={<CapClock part={part} start={clockStart} setStart={setClockStart} />} />
         )}
         {draft.entries.kind === 'other' && (
           <>
@@ -264,6 +267,7 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
             {multi ? `Start round ${ri + 1}` : 'Start clock'}
           </button>
         )}
+        {!round.started_at && <p className="j-note">or tap <b>+rep</b> below: the first rep starts the clock</p>}
       </section>
 
       <ol className="j-list">
@@ -285,7 +289,7 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
                   : cur && <button type="button" className="j-check" aria-label={`${m.name} done`} onClick={() => tickNow(m)}>✓ Done</button>}
               </div>
               {!tick && (cur || !round.started_at) && <Standards text={m.standards} collapsible className="std" />}
-              {cur && reps > 0 && <TapPad count={round.reps_done ?? 0} need={reps} step={tapStep(m)} onTap={onTap} />}
+              {(cur || (!round.started_at && !round.capped && i === nextMv)) && reps > 0 && <TapPad count={round.reps_done ?? 0} need={reps} step={tapStep(m)} onTap={onTap} />}
             </li>
           )
         })}
@@ -328,14 +332,14 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
 }
 
 // ── AMRAP ──────────────────────────────────────────────────────────────────────
-function Amrap({ part, sex, loadFor, entries, onChange, onTap }: {
+function Amrap({ part, sex, loadFor, entries, onChange, onTap, clock }: {
   part: JudgePart; sex: Sex; loadFor: (m: JudgePart['part_movements'][number]) => string | null
-  entries: Extract<Entries, { kind: 'amrap' }>; onChange: (e: Entries, events?: JudgeEvent[]) => void; onTap: (dir: 1 | -1) => void
+  entries: Extract<Entries, { kind: 'amrap' }>; onChange: (e: Entries, events?: JudgeEvent[]) => void; onTap: (dir: 1 | -1) => void; clock: React.ReactNode
 }) {
   return (
     <>
       <MovementList part={part} sex={sex} loadFor={loadFor} />
-      <CapClock part={part} />
+      {clock}
       {repsPerRound(part, sex) > 0 && (() => {
         const pos = amrapPosition(part, sex, entries.reps ?? 0)
         return (
@@ -350,9 +354,9 @@ function Amrap({ part, sex, loadFor, entries, onChange, onTap }: {
 }
 
 // ── Max load ───────────────────────────────────────────────────────────────────
-function MaxLoad({ part, lane, loadFor, entries, onChange }: {
+function MaxLoad({ part, lane, loadFor, entries, onChange, clock }: {
   part: JudgePart; lane: Lane; loadFor: (m: JudgePart['part_movements'][number]) => string | null
-  entries: LoadEntries; onChange: (e: Entries, events?: JudgeEvent[]) => void
+  entries: LoadEntries; onChange: (e: Entries, events?: JudgeEvent[]) => void; clock: React.ReactNode
 }) {
   const owners = part.load_entry === 'per_team'
     ? [{ id: 'pair', label: 'Pair' }]
@@ -365,7 +369,7 @@ function MaxLoad({ part, lane, loadFor, entries, onChange }: {
   }
   return (
     <>
-      <CapClock part={part} />
+      {clock}
       <div className="j-load">
         <div className="row-h" style={{ gridTemplateColumns: cols }}>
           <span></span>
@@ -413,8 +417,7 @@ function MovementList({ part, sex, loadFor }: { part: JudgePart; sex: Sex; loadF
 }
 
 /** A simple countdown for AMRAP / max-load windows. Not part of the score. */
-function CapClock({ part }: { part: JudgePart }) {
-  const [start, setStart] = useState<number | null>(null)
+function CapClock({ part, start, setStart }: { part: JudgePart; start: number | null; setStart: (v: number | null) => void }) {
   const now = useNow(start != null)
   if (part.time_cap_seconds == null) return null
   const left = start == null ? part.time_cap_seconds : Math.max(0, part.time_cap_seconds - (now - start) / 1000)

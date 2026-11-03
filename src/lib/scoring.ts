@@ -128,8 +128,12 @@ export function tapStep(m: Pick<Movement, 'tap_step'> | undefined) {
 export function forTimeTap(part: WorkoutPart, sex: Sex, entries: ForTimeEntries, dir: 1 | -1, nowMs: number) {
   const mv = part.part_movements
   const ri = entries.rounds.findIndex((r) => !(mv.length && r.ticks.length >= mv.length) && !(r.capped && r.partial_reps != null && r.confirmed))
-  const round = entries.rounds[ri]
-  if (!round?.started_at || round.capped) return null
+  const current = entries.rounds[ri]
+  if (!current || current.capped) return null
+  // the first +rep of a round starts its clock (a −rep never does)
+  if (!current.started_at && dir < 0) return null
+  const started = !current.started_at
+  const round: RoundEntry & { started_at: number } = { ...current, started_at: current.started_at ?? nowMs }
   const m = mv[round.ticks.length]
   if (!m) return null
   const need = repsFor(m, sex)
@@ -141,7 +145,7 @@ export function forTimeTap(part: WorkoutPart, sex: Sex, entries: ForTimeEntries,
     r = { ...round, reps_done: 0, ticks: [...round.ticks, { movement_id: m.id!, at }] }
     tick = { round: ri + 1, movement_id: m.id!, movement: m.name, at_seconds: at }
   }
-  return { entries: { kind: 'for_time' as const, rounds: entries.rounds.map((x, i) => (i === ri ? r : x)) }, tick }
+  return { entries: { kind: 'for_time' as const, rounds: entries.rounds.map((x, i) => (i === ri ? r : x)) }, tick, started, round: ri + 1 }
 }
 
 /** Where a team is inside an AMRAP round: which movement, and reps done / needed on it. */
