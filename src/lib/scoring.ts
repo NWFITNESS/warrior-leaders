@@ -1,6 +1,6 @@
 // Turns what a judge entered into a score. Shared by the judge app and the admin,
 // so both always calculate the same number.
-import type { Movement, WorkoutPart } from './types'
+import { tiebreakRule, type Movement, type WorkoutPart } from './types'
 
 export type Sex = 'male' | 'female' | 'mixed'
 
@@ -169,6 +169,21 @@ export function amrapTap(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, ro
   if (x === 0) { if (r === 0) return { rounds: 0, reps: 0 }; r -= 1; x = per }
   const pos = amrapPosition(part, sex, x - 1)
   return { rounds: r, reps: Math.max(0, x - (pos ? Math.min(tapStep(pos.movement), pos.done + 1) : 1)) }
+}
+
+/** Automatic tiebreak from what the judge recorded (lower time wins). null = not available yet / not automatic.
+ *  fastest_round: quickest round result (capped rounds count as cap + missing reps, like the score).
+ *  movement: when the chosen movement was ticked in round 1. Pass the team's version of the part (resolvePart). */
+export function autoTiebreak(part: WorkoutPart, sex: Sex, entries: Entries): { value: number | null; label: string } | null {
+  const rule = tiebreakRule(part)
+  if (entries.kind !== 'for_time' || (rule !== 'fastest_round' && rule !== 'movement')) return null
+  if (rule === 'fastest_round') {
+    const times = entries.rounds.map((r) => roundValue(part, sex, r).value).filter((v): v is number => v != null)
+    return { value: times.length ? Math.min(...times) : null, label: 'fastest round' }
+  }
+  const mv = part.part_movements.find((m) => m.id === part.tiebreak_movement_id)
+  const tick = mv ? entries.rounds[0]?.ticks.find((t) => t.movement_id === mv.id) : undefined
+  return { value: tick ? tick.at : null, label: mv ? `end of ${mv.name}${entries.rounds.length > 1 ? ', round 1' : ''}` : 'movement not set' }
 }
 
 /** Max-load completeness needs to know who lifts: every athlete × lift (or every lift for the pair). */

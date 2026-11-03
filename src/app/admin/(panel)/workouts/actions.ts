@@ -27,6 +27,18 @@ export interface WorkoutInput {
   parts: (WorkoutPart & { id: string })[]
 }
 
+/** What athletes see on the Workouts page; auto rules describe themselves when left blank. */
+function tiebreakNote(p: WorkoutInput['parts'][number]) {
+  const note = p.tiebreak_note?.trim()
+  if (note) return note
+  if (p.tiebreak_rule === 'fastest_round') return 'fastest round'
+  if (p.tiebreak_rule === 'movement') {
+    const m = p.part_movements.find((x) => x.id === p.tiebreak_movement_id)
+    return m ? `time at the end of ${m.name}${p.rounds > 1 ? ' in round 1' : ''}` : null
+  }
+  return null
+}
+
 export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string; ok?: boolean }> {
   const { supabase, actor } = await requireStaff()
   if (!input.name.trim()) return { error: 'Give the workout a name.' }
@@ -70,7 +82,9 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
       unit: p.unit || null,
       load_entry: p.load_entry,
       scored: p.scored,
-      tiebreak_note: p.tiebreak_note || null,
+      tiebreak_note: tiebreakNote(p),
+      tiebreak_rule: p.tiebreak_rule ?? 'none',
+      tiebreak_movement_id: null, // set after the movements are saved (it points at one)
       notes: p.notes || null,
     }))
   )
@@ -102,6 +116,10 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
   if (allMovements.length) {
     const { error: mErr } = await supabase.from('wl_part_movements').upsert(allMovements)
     if (mErr) return { error: mErr.message }
+  }
+  for (const p of input.parts) {
+    const mv = p.tiebreak_rule === 'movement' ? allMovements.find((m) => m.id === p.tiebreak_movement_id) : undefined
+    if (mv) await supabase.from('wl_workout_parts').update({ tiebreak_movement_id: mv.id }).eq('id', p.id)
   }
 
   await audit(supabase, { actor, action: 'workout.update', entity: 'workout', entity_id: input.id, before, after: input })

@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDraft, putDraft, queue, type Draft, type JudgeEvent, type JudgePart, type Lane } from '@/lib/judge-client'
 import {
-  amrapPosition, amrapTap, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
+  amrapPosition, amrapTap, autoTiebreak, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
 } from '@/lib/scoring'
-import { parseCap, partTitle, resolvePart } from '@/lib/types'
+import { parseCap, partTitle, resolvePart, tiebreakRule } from '@/lib/types'
+import { SignaturePad } from './signature-pad'
 import { Standards } from '@/components/Standards'
 
 const ev = (kind: string, payload: Record<string, unknown> = {}): JudgeEvent => ({ kind, payload, at: new Date().toISOString() })
@@ -20,7 +21,7 @@ function initialDraft(lane: Lane, part: JudgePart, preview = false): Draft {
   const locked = server?.status === 'verified' || server?.status === 'rejected' ? server.status : undefined
   // the phone's copy wins if it's newer than what the server has (e.g. saved while offline)
   if (local && (!server || local.updatedAt >= Date.parse(server.updated_at))) return { ...local, locked: locked ?? local.locked }
-  if (serverEntries) return { entries: serverEntries, tiebreak: '', signed_by: server?.signed_by ?? '', status: serverStatus, updatedAt: Date.parse(server!.updated_at), locked }
+  if (serverEntries) return { entries: serverEntries, tiebreak: server?.tiebreak_value != null && tiebreakRule(part) === 'manual' ? String(server.tiebreak_value) : '', signed_by: server?.signed_by ?? '', signature: server?.signature ?? '', status: serverStatus, updatedAt: Date.parse(server!.updated_at), locked }
   return { entries: emptyEntries(part), tiebreak: '', signed_by: '', status: 'draft', updatedAt: 0, locked }
 }
 
@@ -39,14 +40,20 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
   const locked = !!draft.locked
   const submitted = draft.status === 'submitted'
 
+  const rule = tiebreakRule(part)
+  const auto = autoTiebreak(part, sex, draft.entries)
+
   function commit(next: Partial<Draft>, events: JudgeEvent[] = [], status: Draft['status'] = 'draft') {
-    const d: Draft = { ...draftRef.current, ...next, status, updatedAt: Date.now() }
+    // a changed score needs signing again
+    const resign = next.entries && next.entries !== draftRef.current.entries ? { signature: '' } : {}
+    const d: Draft = { ...draftRef.current, ...next, ...resign, status, updatedAt: Date.now() }
     draftRef.current = d
     setDraft(d)
     if (preview) return
     putDraft(lane.lane_assignment_id, part.id, d)
     const r = computeScore(part, sex, d.entries)
-    const tb = d.tiebreak.trim() ? parseCap(d.tiebreak) ?? Number(d.tiebreak) : null
+    const tbAuto = autoTiebreak(part, sex, d.entries)
+    const tb = tbAuto ? tbAuto.value : rule === 'manual' && d.tiebreak.trim() ? parseCap(d.tiebreak) ?? Number(d.tiebreak) : null
     queue({
       lane: lane.lane_assignment_id,
       part: part.id,
@@ -60,6 +67,7 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
         entries: d.entries,
         splits: d.entries.kind === 'for_time' ? d.entries.rounds.flatMap((rd, i) => rd.ticks.map((t) => ({ round: i + 1, ...t }))) : [],
         signed_by: d.signed_by || null,
+        signature: d.signature || null,
       },
       events,
     })
@@ -111,9 +119,9 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
           </>
         )}
 
-        {part.tiebreak_note && (
+        {rule === 'manual' && (
           <label className="field">
-            <span>Tiebreak · {part.tiebreak_note}</span>
+            <span>Tiebreak{part.tiebreak_note ? ` · ${part.tiebreak_note}` : ''}</span>
             <input className="input mono" style={{ fontSize: '1.3rem', padding: 12 }} inputMode="decimal" placeholder={part.score_type === 'max_load' ? 'kg' : 'mm:ss'}
               value={draft.tiebreak} onChange={(e) => commit({ tiebreak: e.target.value }, [ev('tiebreak', { value: e.target.value })])} />
           </label>
@@ -136,6 +144,9 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
           </ul>
         )}
         {result.detail.length === 1 && <p className="j-note">{result.detail[0]}</p>}
+        {auto && (
+          <div className="j-tiebreak"><span>Tiebreak · {auto.label}</span><b>{auto.value != null ? formatTime(auto.value) : '—'}</b></div>
+        )}
 
         {submitted ? (
           <div className="j-submitted">
@@ -143,11 +154,13 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
               {locked ? `${draft.locked === 'verified' ? 'Verified' : 'Rejected'} by head judge` : 'Submitted · awaiting head judge'}
             </span>
             {draft.signed_by && <span className="j-note">Agreed by {draft.signed_by}</span>}
+            {draft.signature && <div className="j-sig-done"><SignaturePad value={draft.signature} onChange={() => {}} disabled /></div>}
             {!locked && <button type="button" className="j-tool" onClick={() => commit({}, [ev('reopen')], 'draft')}>Edit score</button>}
           </div>
         ) : (
-          <SubmitPanel lane={lane} complete={complete} signedBy={draft.signed_by}
+          <SubmitPanel lane={lane} complete={complete} signedBy={draft.signed_by} signature={draft.signature ?? ''}
             onSign={(name) => commit({ signed_by: name }, [ev('captain', { name })])}
+            onSignature={(sig) => commit({ signature: sig }, sig ? [ev('signature', { name: draft.signed_by })] : [])}
             onSubmit={() => commit({}, [ev('submit', { value: result.value, display: result.display })], 'submitted')} />
         )}
       </section>
@@ -469,28 +482,26 @@ function Stepper({ label, value, onChange, max }: { label: string; value: number
   )
 }
 
-function SubmitPanel({ lane, complete, signedBy, onSign, onSubmit }: {
-  lane: Lane; complete: boolean; signedBy: string; onSign: (name: string) => void; onSubmit: () => void
+function SubmitPanel({ lane, complete, signedBy, signature, onSign, onSignature, onSubmit }: {
+  lane: Lane; complete: boolean; signedBy: string; signature: string
+  onSign: (name: string) => void; onSignature: (path: string) => void; onSubmit: () => void
 }) {
-  const [agreed, setAgreed] = useState(false)
-  if (!complete) return <p className="j-note">Finish the score, then the captain checks it here.</p>
+  if (!complete) return <p className="j-note">Finish the score, then the captain checks and signs it here.</p>
   const captain = lane.team.athletes.find((a) => a.is_captain) ?? lane.team.athletes[0]
   const name = signedBy || (captain ? `${captain.first_name} ${captain.last_name}`.trim() : '')
   return (
     <div className="j-sign">
-      <p className="j-label">Captain check</p>
+      <p className="j-label">Who’s signing?</p>
       <div className="j-choice">
         {lane.team.athletes.map((a) => {
           const n = `${a.first_name} ${a.last_name}`.trim()
           return <button key={a.id} type="button" aria-pressed={n === name} onClick={() => onSign(n)}>{n}{a.is_captain && <small>Captain</small>}</button>
         })}
       </div>
-      <label className="j-agree">
-        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-        <span>{name || 'The athlete'} has checked and agrees with this score</span>
-      </label>
-      <button type="button" className="j-primary" disabled={!agreed} onClick={() => { if (!signedBy && name) onSign(name); onSubmit() }}>
-        Submit score
+      <p className="j-label" style={{ marginTop: 8 }}>{name || 'The athlete'} signs to agree this score</p>
+      <SignaturePad value={signature} onChange={onSignature} />
+      <button type="button" className="j-primary" style={{ marginTop: 8 }} disabled={!signature} onClick={() => { if (!signedBy && name) onSign(name); onSubmit() }}>
+        {signature ? 'Submit score' : 'Sign to submit'}
       </button>
     </div>
   )

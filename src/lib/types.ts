@@ -75,7 +75,22 @@ export interface WorkoutPart {
   scored: boolean
   tiebreak_note: string | null
   notes: string | null
+  tiebreak_rule?: TiebreakRule // how the tiebreak is found (default: manual if there's a note)
+  tiebreak_movement_id?: string | null // for 'movement'
   part_movements: Movement[]
+}
+
+export type TiebreakRule = 'none' | 'manual' | 'fastest_round' | 'movement'
+export const TIEBREAK_RULES: { value: TiebreakRule; label: string; forTimeOnly?: boolean }[] = [
+  { value: 'none', label: 'No tiebreak' },
+  { value: 'manual', label: 'Judge enters it' },
+  { value: 'fastest_round', label: 'Fastest round (automatic)', forTimeOnly: true },
+  { value: 'movement', label: 'Time at end of a movement (automatic)', forTimeOnly: true },
+]
+/** The rule in force for a part; older parts with only a note count as 'manual'. */
+export function tiebreakRule(p: Pick<WorkoutPart, 'tiebreak_rule' | 'tiebreak_note' | 'score_type'>): TiebreakRule {
+  const r = p.tiebreak_rule ?? (p.tiebreak_note?.trim() ? 'manual' : 'none')
+  return (r === 'fastest_round' || r === 'movement') && p.score_type !== 'for_time' ? 'manual' : r
 }
 
 export interface Workout {

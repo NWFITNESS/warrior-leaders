@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { SCORE_TYPES, formatCap, parseCap, partTitle, partTitleOr, type Movement, type ScoreType, type Workout, type WorkoutPart } from '@/lib/types'
+import { SCORE_TYPES, TIEBREAK_RULES, formatCap, parseCap, partTitle, partTitleOr, tiebreakRule, type Movement, type ScoreType, type TiebreakRule, type Workout, type WorkoutPart } from '@/lib/types'
 import { deleteWorkout, duplicateWorkout, saveWorkout, type WorkoutInput } from '../actions'
 import { JudgePreview } from './judge-preview'
 
@@ -14,7 +14,7 @@ const blankMovement = (): Mv => ({ id: uid(), sort_order: 0, name: '', reps: nul
 const blankPart = (index: number): Part => ({
   id: uid(), label: '', name: '', sort_order: index,
   score_type: 'for_time', direction: 'asc', time_cap_seconds: null, capText: '', rounds: 1, capped_round_rule: 'cap_plus_reps', total_reps: null, unit: '',
-  load_entry: 'per_athlete', scored: true, tiebreak_note: '', notes: '', part_movements: [blankMovement()],
+  load_entry: 'per_athlete', scored: true, tiebreak_note: '', tiebreak_rule: 'none', tiebreak_movement_id: null, notes: '', part_movements: [blankMovement()],
 })
 
 const HINT: Record<ScoreType, string> = {
@@ -202,14 +202,44 @@ export function Builder({ workout }: { workout: Workout }) {
             {p.score_type === 'other' && (
               <label className="field"><span>Unit</span><input className="input" placeholder="m, cal, kg…" value={p.unit ?? ''} onChange={(e) => updatePart(p.id, { unit: e.target.value })} /></label>
             )}
-            <label className="field" style={{ gridColumn: 'span 2' }}>
+            <div className="field" style={{ gridColumn: 'span 2' }}>
               <span>Tiebreak</span>
-              <input className="input" placeholder={p.score_type === 'max_load' ? 'e.g. heaviest single clean' : 'e.g. time at end of toes-to-bar'} value={p.tiebreak_note ?? ''} onChange={(e) => updatePart(p.id, { tiebreak_note: e.target.value })} />
-            </label>
+              {(() => {
+                const rule = tiebreakRule(p)
+                const named = p.part_movements.filter((m) => m.name.trim())
+                return (
+                  <div className="tb-row">
+                    <select className="input" aria-label="Tiebreak rule" value={rule}
+                      onChange={(e) => {
+                        const r = e.target.value as TiebreakRule
+                        updatePart(p.id, { tiebreak_rule: r, tiebreak_movement_id: r === 'movement' ? (p.tiebreak_movement_id ?? named.at(-1)?.id ?? null) : null })
+                      }}>
+                      {TIEBREAK_RULES.filter((t) => !t.forTimeOnly || p.score_type === 'for_time').map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                    {rule === 'movement' && (
+                      <select className="input" aria-label="Tiebreak movement" value={p.tiebreak_movement_id ?? ''} onChange={(e) => updatePart(p.id, { tiebreak_movement_id: e.target.value || null })}>
+                        <option value="">Pick a movement…</option>
+                        {named.map((m) => <option key={m.id} value={m.id}>End of {m.name}</option>)}
+                      </select>
+                    )}
+                    {rule !== 'none' && (
+                      <input className="input" aria-label="Tiebreak description" value={p.tiebreak_note ?? ''} onChange={(e) => updatePart(p.id, { tiebreak_note: e.target.value })}
+                        placeholder={rule === 'manual' ? (p.score_type === 'max_load' ? 'What judges record, e.g. heaviest single' : 'What judges record, e.g. time at end of toes-to-bar') : 'Description for athletes (optional)'} />
+                    )}
+                  </div>
+                )
+              })()}
+              <span className="hint">
+                {tiebreakRule(p) === 'fastest_round' && 'Worked out automatically from the judge’s round times: the team’s quickest round. Lower wins.'}
+                {tiebreakRule(p) === 'movement' && `Worked out automatically from when the judge ticks that movement${p.rounds > 1 ? ' in round 1' : ''}. Lower wins.`}
+                {tiebreakRule(p) === 'manual' && 'Judges type it in on their phone.'}
+                {tiebreakRule(p) === 'none' && 'Equal scores share the place.'}
+              </span>
+            </div>
           </div>
 
           <div className="stack-sm">
-            <span className="lbl" style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--subtle)' }}>
+            <span className="lbl" style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--subtle)' }}>
               {p.score_type === 'max_load' ? 'Lifts' : 'Movements'}
             </span>
             <div className="table-wrap">

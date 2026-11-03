@@ -2,15 +2,16 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { adminInputFrom, computeScore, type AdminInput, type Entries, type Sex } from '@/lib/scoring'
-import { partTitleOr, resolvePart, type WorkoutPart } from '@/lib/types'
+import { adminInputFrom, autoTiebreak, computeScore, formatTime, type AdminInput, type Entries, type Sex } from '@/lib/scoring'
+import { partTitleOr, resolvePart, tiebreakRule, type WorkoutPart } from '@/lib/types'
+import { SignatureImage } from '@/app/judge/signature-pad'
 import { logAppeal, resolveAppeal, saveAdminScore, setRelease, setStatus } from './actions'
 
 export interface BoardRow { teamId: string; teamName: string; divisionId: string; divisionName: string; sex: Sex; level: string; heat: number | null; lane: number | null; judge: string | null }
 interface Appeal { id: string; description: string; status: 'open' | 'upheld' | 'rejected'; resolution: string | null; created_at: string }
 interface Score {
   id: string; part_id: string; team_id: string; status: 'draft' | 'submitted' | 'verified' | 'appeal' | 'rejected'; source: 'judge' | 'paper' | 'admin'
-  value: number | null; tiebreak_value: number | null; entries: Entries | Record<string, never>; signed_by: string | null
+  value: number | null; tiebreak_value: number | null; entries: Entries | Record<string, never>; signed_by: string | null; signature: string | null
   submitted_at: string | null; verified_by: string | null; judge: { name: string } | null; appeals: Appeal[]
 }
 type Part = WorkoutPart & { id: string }
@@ -142,7 +143,7 @@ export function ScoresBoard({ workoutNumber, parts, events, divisions, rows, sco
                           <td className="small muted">{s?.judge?.name ?? r.judge ?? '—'}</td>
                           <td>
                             <span className="mono" style={{ fontWeight: 600 }}>{res?.display ?? '—'}</span>
-                            {s?.tiebreak_value != null && <div className="small subtle">Tiebreak {s.tiebreak_value}</div>}
+                            {s?.tiebreak_value != null && <div className="small subtle">Tiebreak {tiebreakRule(p) === 'manual' && p.score_type !== 'for_time' ? s.tiebreak_value : formatTime(Number(s.tiebreak_value))}</div>}
                             {s && s.source !== 'judge' && <div><span className="pill pill-dim">{s.source === 'paper' ? 'Paper' : 'Edited'}</span></div>}
                           </td>
                           <td>{s ? <span className={`pill ${STATUS[s.status][1]}`}>{STATUS[s.status][0]}</span> : <span className="pill pill-dim">No score</span>}</td>
@@ -220,8 +221,9 @@ function Detail({ score, detail }: { score: Score; detail: string[] }) {
   return (
     <div className="stack-sm small">
       {detail.length > 0 && <div>{detail.map((d) => <div key={d} className="mono">{d}</div>)}</div>}
+      {score.signature && <div className="sig-box"><SignatureImage path={score.signature} height={56} /><span className="small subtle">{score.signed_by ?? 'Captain'}</span></div>}
       <div className="muted">
-        {score.signed_by ? `Agreed by ${score.signed_by}. ` : ''}
+        {score.signed_by ? `Signed by ${score.signed_by}. ` : ''}
         {score.submitted_at ? `Submitted ${new Date(score.submitted_at).toLocaleTimeString('en-GB')}. ` : ''}
         {score.verified_by ? `Verified by ${score.verified_by}.` : ''}
       </div>
@@ -260,9 +262,12 @@ function ScoreForm({ part, sex, entries, tiebreak, isPaper, pending, onSave, onC
         {part.score_type === 'max_reps' && <label className="field" style={{ width: 140 }}><span>Reps</span><input className="input mono" inputMode="numeric" value={input.reps} onChange={(e) => set({ reps: e.target.value })} /></label>}
         {part.score_type === 'max_load' && <label className="field" style={{ width: 160 }}><span>Total kg</span><input className="input mono" inputMode="decimal" value={input.kg} onChange={(e) => set({ kg: e.target.value })} /></label>}
         {part.score_type === 'other' && <label className="field" style={{ width: 160 }}><span>Score{part.unit ? ` (${part.unit})` : ''}</span><input className="input mono" inputMode="decimal" value={input.value} onChange={(e) => set({ value: e.target.value })} /></label>}
-        {part.tiebreak_note && <label className="field" style={{ width: 160 }}><span>Tiebreak</span><input className="input mono" value={tb} placeholder={part.tiebreak_note} onChange={(e) => setTb(e.target.value)} /></label>}
+        {tiebreakRule(part) === 'manual' && <label className="field" style={{ width: 160 }}><span>Tiebreak</span><input className="input mono" value={tb} placeholder={part.tiebreak_note ?? ''} onChange={(e) => setTb(e.target.value)} /></label>}
       </div>
       {part.score_type === 'for_time' && <span className="small subtle">Type a time like 2:41.5, or “cap 28” for a {input.rounds.length > 1 ? 'round' : 'workout'} not finished in time (28 = reps done).</span>}
+      {(tiebreakRule(part) === 'fastest_round' || tiebreakRule(part) === 'movement') && (
+        <span className="small subtle">Tiebreak is worked out automatically ({tiebreakRule(part) === 'fastest_round' ? 'fastest round' : 'time at end of the chosen movement'}){entries ? `: currently ${(() => { const a = autoTiebreak(part, sex, entries); return a?.value != null ? formatTime(a.value) : '—' })()}` : ''}.</span>
+      )}
       {!hideReason && (
         <label className="field"><span>{isPaper ? 'Where is this score from?' : 'Reason for the change'}</span>
           <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={isPaper ? 'Paper scoresheet, lane 3' : 'e.g. Judge ticked deadlifts late; video shows 1:58'} />

@@ -294,6 +294,20 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .j-agree input { accent-color: var(--j-accent); width: 20px; height: 20px; flex: none; margin: 0; }
 .j-submitted { display: grid; gap: 6px; justify-items: center; text-align: center; border-top: 1px solid var(--j-hair); padding-top: 12px; }
 
+/* Captain signature + auto tiebreak */
+.j-sig { position: relative; border-radius: 12px; background: #f6f6f4; touch-action: none; overflow: hidden; }
+.j-sig svg { display: block; width: 100%; height: auto; aspect-ratio: 300 / 120; cursor: crosshair; }
+.j-sig .base { stroke: rgba(0, 0, 0, 0.18); stroke-width: 1; stroke-dasharray: 4 4; }
+.j-sig path { fill: none; stroke: #111; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.j-sig .hint { position: absolute; left: 16px; bottom: 34px; font-size: 0.85rem; color: rgba(0, 0, 0, 0.38); pointer-events: none; }
+.j-sig .clear { position: absolute; top: 6px; right: 8px; border: 0; background: rgba(0, 0, 0, 0.06); color: #333 !important; border-radius: 999px; padding: 4px 10px; font-size: 0.75rem !important; font-weight: 600; cursor: pointer; }
+.j-sig-done { width: 180px; }
+.j-sig-done .j-sig { background: transparent; }
+.j-sig-done .j-sig path { stroke: var(--j-text); }
+.j-sig-done .j-sig .base { display: none; }
+.j-tiebreak { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0 0; border-top: 1px solid var(--j-hair); font-size: 0.86rem; color: var(--j-2); }
+.j-tiebreak b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-weight: 500; color: var(--j-text); }
+
 /* Steppers + inputs inside the judge app */
 .judge .field > span { text-transform: none; letter-spacing: 0; font-size: 0.8rem; font-weight: 500; color: var(--j-2); }
 .j-step { display: grid; grid-template-columns: 60px 1fr 60px; gap: 8px; align-items: center; }
@@ -438,3 +452,108 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .std-drop[open] summary::before { transform: rotate(90deg); }
 .std-drop .std-list { font-size: 0.85rem; color: var(--muted); }
 .std-public { margin-top: 2px; }
+
+/* ── Admin redesign: same system as the judge app ─────────────────────────────
+   Flat surfaces, hairlines, sentence-case labels, one gold primary action,
+   system numerals. Scoped to .admin so the public site keeps its own look. */
+.admin {
+  --a-bg: #0b0b0b; --a-side: #0e0e0e; --a-surface: #141414; --a-raised: #1b1b1b; --a-hair: rgba(255, 255, 255, 0.07); --a-hair-2: rgba(255, 255, 255, 0.12);
+  --a-text: #f2f2f2; --a-2: rgba(242, 242, 242, 0.62); --a-3: rgba(242, 242, 242, 0.4); --a-accent: #c9a70a;
+  --f-num: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--a-bg); color: var(--a-text); grid-template-columns: 240px minmax(0, 1fr);
+}
+
+/* Sidebar */
+.admin .admin-side { background: var(--a-side); border-right: 1px solid var(--a-hair); padding: 20px 12px 16px; gap: 0; }
+.admin .admin-brand { padding: 2px 10px 22px; gap: 10px; }
+.admin .admin-brand span { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; text-transform: none; color: var(--a-3); }
+.admin .admin-nav { display: grid; gap: 1px; }
+.admin .admin-nav .grp { font-size: 0.72rem; font-weight: 600; color: var(--a-3); padding: 16px 12px 6px; }
+.admin .admin-nav > div:first-child .grp { padding-top: 0; }
+.admin .admin-nav a { font-size: 0.92rem; font-weight: 500; color: var(--a-2); padding: 7px 12px; border-radius: 8px; }
+.admin .admin-nav a:hover { background: rgba(255, 255, 255, 0.04); color: var(--a-text); }
+.admin .admin-nav a[aria-current='page'] { background: var(--a-raised); color: var(--a-text); box-shadow: inset 2px 0 0 var(--a-accent); }
+.admin .admin-foot { border-top: 1px solid var(--a-hair); padding: 14px 10px 0; color: var(--a-3); font-size: 0.8rem; }
+.admin .admin-foot a, .admin .admin-foot .linkbtn { color: var(--a-2); font-size: 0.82rem; }
+.admin .admin-main { padding: 32px 40px 72px; gap: 22px; }
+
+/* Type */
+.admin h1 { font-size: 1.75rem; font-weight: 700; text-transform: none; letter-spacing: -0.01em; }
+.admin h2 { font-size: 1.05rem; font-weight: 600; }
+.admin h3 { font-size: 0.98rem; font-weight: 600; }
+.admin .eyebrow { font-size: 0.8rem; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--a-3); }
+.admin .muted { color: var(--a-2); }
+.admin .subtle { color: var(--a-3); }
+.admin .mono { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.admin a { color: var(--a-accent); }
+
+/* Surfaces */
+.admin .card, .admin .part { background: var(--a-surface); border: 0; border-radius: 14px; padding: 20px 22px; box-shadow: none; }
+.admin .card-gold { box-shadow: inset 0 0 0 1px rgba(201, 167, 10, 0.45); }
+.admin .stat { background: var(--a-surface); border: 0; border-radius: 14px; padding: 16px 18px; }
+.admin .stat b { font-family: var(--f-num); font-variant-numeric: tabular-nums; font-size: 1.9rem; font-weight: 600; letter-spacing: -0.01em; }
+.admin .stat span { font-size: 0.82rem; text-transform: none; letter-spacing: 0; color: var(--a-2); }
+.admin .part-label { font-size: 1rem; color: var(--a-2); font-weight: 600; }
+.admin .empty { border: 1px dashed var(--a-hair-2); border-radius: 14px; color: var(--a-3); }
+
+/* Buttons */
+.admin .btn { background: var(--a-accent); color: #0b0b0b; border-radius: 10px; font-family: inherit; font-weight: 600; font-size: 0.9rem; letter-spacing: 0; text-transform: none; padding: 9px 16px; }
+.admin .btn:hover { filter: brightness(1.06); }
+.admin .btn-ghost { background: rgba(255, 255, 255, 0.06); color: var(--a-text); border: 0; }
+.admin .btn-ghost:hover { background: rgba(255, 255, 255, 0.1); }
+.admin .btn-danger { background: rgba(239, 68, 68, 0.12); color: var(--bad); border: 0; }
+.admin .btn-sm { padding: 6px 12px; font-size: 0.84rem; border-radius: 8px; }
+.admin .linkbtn { color: var(--a-accent); font-size: 0.88rem; font-weight: 500; }
+.admin .linkbtn.danger { color: var(--bad); }
+
+/* Forms */
+.admin .field { gap: 6px; }
+.admin .field > span, .admin label.lbl { font-size: 0.8rem; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--a-2); }
+.admin .field .hint, .admin .hint { font-size: 0.78rem; font-weight: 400; color: var(--a-3); }
+.admin .input, .admin select.input, .admin textarea.input { background: var(--a-bg); border: 1px solid var(--a-hair-2); border-radius: 10px; padding: 9px 12px; color: var(--a-text); }
+.admin .input:focus { border-color: var(--a-accent); box-shadow: 0 0 0 3px rgba(201, 167, 10, 0.18); }
+.admin .check { color: var(--a-2); }
+.admin .tb-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin .tb-row select.input { width: auto; min-width: 250px; flex: 0 0 auto; }
+.admin .tb-row input.input { flex: 1 1 220px; width: auto; }
+
+/* Segmented control */
+.admin .seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--a-bg); border: 1px solid var(--a-hair); border-radius: 10px; }
+.admin .seg button, .admin .seg a.btn { border: 0; background: none; color: var(--a-2); border-radius: 7px; padding: 6px 12px; font-size: 0.84rem; font-weight: 500; box-shadow: none; filter: none; }
+.admin .seg button:hover, .admin .seg a.btn:hover { color: var(--a-text); }
+.admin .seg button[aria-pressed='true'] { background: var(--a-raised); color: var(--a-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+.admin nav.seg { flex-wrap: wrap; }
+
+/* Tables */
+.admin table.table { font-size: 0.9rem; }
+.admin .table th { font-size: 0.78rem; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--a-3); border-bottom: 1px solid var(--a-hair); padding: 8px 12px; }
+.admin .table td { border-bottom: 1px solid var(--a-hair); padding: 11px 12px; vertical-align: middle; }
+.admin .table tr:last-child td { border-bottom: 0; }
+.admin .table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+/* Status: dot + text instead of filled pills */
+.admin .pill { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; font-size: 0.8rem; font-weight: 500; letter-spacing: 0; color: var(--a-2); }
+.admin .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--a-3); flex: none; }
+.admin .pill-ok { color: var(--ok); } .admin .pill-ok::before { background: var(--ok); }
+.admin .pill-warn { color: var(--warn); } .admin .pill-warn::before { background: var(--warn); }
+.admin .pill-bad { color: var(--bad); } .admin .pill-bad::before { background: var(--bad); }
+.admin .pill-gold { color: var(--a-accent); } .admin .pill-gold::before { background: var(--a-accent); }
+.admin .pill-dim { color: var(--a-3); }
+
+/* Notices */
+.admin .notice { border: 0; background: var(--a-surface); border-radius: 12px; color: var(--a-2); box-shadow: inset 3px 0 0 var(--a-hair-2); }
+.admin .notice-ok { color: var(--ok); box-shadow: inset 3px 0 0 var(--ok); }
+.admin .notice-bad { color: var(--bad); box-shadow: inset 3px 0 0 var(--bad); }
+
+/* Workout builder details */
+.admin .mv-tag { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-weight: 600; }
+.admin .mv-grid .h { text-transform: none; letter-spacing: 0; font-size: 0.78rem; color: var(--a-3); }
+.admin .mv-sep { border-top-color: var(--a-hair); }
+.admin .sig-box { justify-self: start; display: inline-grid; gap: 2px; padding: 8px 12px; border-radius: 10px; background: #f6f6f4; color: #111; }
+.admin .sig-box .subtle { color: rgba(0, 0, 0, 0.5); }
+
+@media (max-width: 800px) {
+  .admin { grid-template-columns: 1fr; }
+  .admin .admin-main { padding: 20px 16px 48px; }
+  .admin .tb-row select.input { min-width: 0; width: 100%; }
+}

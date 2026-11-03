@@ -18,7 +18,7 @@ function db() {
 // ── Types returned by wl_judge_assignments ─────────────────────────────────────
 export interface JudgeAthlete { id: string; first_name: string; last_name: string; is_captain: boolean }
 export interface JudgePart extends WorkoutPart { id: string }
-export interface ServerScore { part_id: string; status: 'draft' | 'submitted' | 'verified' | 'appeal' | 'rejected'; value: number | null; capped: boolean; entries: Entries | Record<string, never>; signed_by: string | null; updated_at: string }
+export interface ServerScore { part_id: string; status: 'draft' | 'submitted' | 'verified' | 'appeal' | 'rejected'; value: number | null; capped: boolean; entries: Entries | Record<string, never>; signed_by: string | null; signature?: string | null; tiebreak_value?: number | null; updated_at: string }
 export interface Lane {
   lane_assignment_id: string
   heat_id: string
@@ -83,7 +83,7 @@ export async function fetchAssignments(): Promise<Assignments | { error: 'signed
 }
 
 // ── Drafts (this phone's copy of each score) ───────────────────────────────────
-export interface Draft { entries: Entries; tiebreak: string; signed_by: string; status: 'draft' | 'submitted'; updatedAt: number; locked?: string }
+export interface Draft { entries: Entries; tiebreak: string; signed_by: string; signature?: string; status: 'draft' | 'submitted'; updatedAt: number; locked?: string }
 export const getDraft = (lane: string, part: string) => read<Draft | null>(draftKey(lane, part), null)
 export const putDraft = (lane: string, part: string, d: Draft) => write(draftKey(lane, part), d)
 
@@ -92,7 +92,7 @@ export interface JudgeEvent { kind: string; payload: Record<string, unknown>; at
 interface Pending {
   lane: string
   part: string
-  score: { status: 'draft' | 'submitted'; value: number | null; capped: boolean; reps: number | null; rounds: number | null; tiebreak_value: number | null; entries: Entries; splits: unknown[]; signed_by: string | null }
+  score: { status: 'draft' | 'submitted'; value: number | null; capped: boolean; reps: number | null; rounds: number | null; tiebreak_value: number | null; entries: Entries; splits: unknown[]; signed_by: string | null; signature: string | null }
   events: JudgeEvent[]
 }
 

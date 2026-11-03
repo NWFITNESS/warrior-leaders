@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireStaff } from '@/lib/auth'
 import { audit } from '@/lib/audit'
-import { computeScore, entriesFromAdmin, parseRoundInput, type AdminInput, type Sex } from '@/lib/scoring'
+import { autoTiebreak, computeScore, entriesFromAdmin, parseRoundInput, type AdminInput, type Sex } from '@/lib/scoring'
 import { resolvePart, type WorkoutPart } from '@/lib/types'
 
 type Result = { ok?: boolean; error?: string }
@@ -58,8 +58,10 @@ export async function saveAdminScore(args: {
   if ('error' in built) return { error: built.error }
   const result = computeScore(teamPart, sex, built.entries)
 
-  let tiebreak: number | null = null
-  if (args.tiebreak.trim()) {
+  // automatic tiebreak rules are recalculated from the corrected entries; manual ones use what was typed
+  const auto = autoTiebreak(teamPart, sex, built.entries)
+  let tiebreak: number | null = auto ? auto.value : null
+  if (!auto && args.tiebreak.trim()) {
     const p = parseRoundInput(args.tiebreak)
     tiebreak = p && 'time' in p ? p.time : Number(args.tiebreak)
     if (!Number.isFinite(tiebreak)) return { error: 'The tiebreak should be a time (2:41.5) or a number.' }
