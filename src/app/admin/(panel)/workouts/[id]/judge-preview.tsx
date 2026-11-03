@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { PartScorer } from '@/app/judge/part-scorer'
+import { PartTabs, TeamHeader } from '@/app/judge/lane-view'
 import type { JudgePart, Lane } from '@/lib/judge-client'
-import { partTitleOr, type WorkoutPart } from '@/lib/types'
+import type { WorkoutPart } from '@/lib/types'
 
 // What a judge sees on their phone for this workout, built from the builder's unsaved state.
 // It's the real judge scoring screen in preview mode: try it out — nothing is stored or sent.
@@ -56,29 +57,16 @@ export function JudgePreview({ number, name, description, parts }: { number: str
         <div className="jp-screen">
           <main className="judge" style={{ minHeight: 0 }}>
             <header className="j-top">
-              <span className="who">Preview judge</span>
-              <span className="j-sync ok">● Preview</span>
+              <span className="j-back">‹ Lanes</span>
+              <span className="j-title">Lane 1 · Heat 1</span>
+              <span className="j-sync ok"><i />Preview</span>
             </header>
-            <div className="stack" style={{ gap: 12 }}>
-              <span className="linkbtn" style={{ fontSize: '1rem' }}>← All lanes</span>
-              <div className="stack-sm" style={{ gap: 4 }}>
-                <div className="spread" style={{ alignItems: 'baseline' }}>
-                  <h1 style={{ fontSize: '1.6rem', textTransform: 'none' }}>{lane.team.name}</h1>
-                  <span className="eyebrow">Lane 1 · Heat 1</span>
-                </div>
-                <span className="muted small">{d.label} · Alex Example &amp; Sam Example</span>
-                <span className="small subtle">Event {number || '?'} · {name || 'Untitled'}</span>
-              </div>
-              {parts.length > 1 && (
-                <div className="j-tabs" role="tablist">
-                  {parts.map((p, i) => (
-                    <button key={p.id} type="button" role="tab" aria-pressed={p.id === part?.id} onClick={() => setPartId(p.id)}>{partTitleOr(p, i)}</button>
-                  ))}
-                </div>
-              )}
+            <div className="j-screen">
+              <TeamHeader lane={lane} />
+              <PartTabs lane={lane} partId={part?.id} onPick={setPartId} />
               {part && part.part_movements.length > 0
                 ? <PartScorer key={shape} lane={lane} part={part as JudgePart} preview />
-                : <p className="notice">Add a movement to see the judge’s screen.</p>}
+                : <div className="j-banner">Add a movement to see the judge’s screen.</div>}
             </div>
           </main>
         </div>

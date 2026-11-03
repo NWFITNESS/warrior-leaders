@@ -49,19 +49,23 @@ export default function JudgePage() {
       {phase === 'app' && data && (
         <>
           <header className="j-top">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Logo width={48} variant="mark" />
-              <span className="who">{data.judge.name}{data.judge.role === 'head' ? ' · Head judge' : ''}</span>
-            </div>
+            {lane ? (
+              <button type="button" className="j-back" onClick={() => { setLaneId(null); void refresh() }}>‹ Lanes</button>
+            ) : (
+              <span className="j-brand"><Logo width={40} variant="mark" /></span>
+            )}
+            <span className="j-title">
+              {lane ? `Lane ${lane.lane} · Heat ${lane.heat_number}` : <>{data.judge.name}{data.judge.role === 'head' && <small>Head judge</small>}</>}
+            </span>
             <SyncBadge offline={offline} />
           </header>
 
           {lane ? (
-            <LaneView lane={lane} onBack={() => { setLaneId(null); void refresh() }} />
+            <LaneView lane={lane} />
           ) : (
             <>
-              <LaneList lanes={data.lanes} onOpen={setLaneId} onRefresh={refresh} />
-              <button className="linkbtn" style={{ justifySelf: 'center', marginTop: 12 }}
+              <LaneList lanes={data.lanes} onOpen={setLaneId} onRefresh={refresh} showJudge={data.judge.role === 'head'} />
+              <button type="button" className="j-tool" style={{ justifySelf: 'center', marginTop: 8 }}
                 onClick={async () => { await logout(); setData(null); setPhase('signin') }}>
                 Sign out
               </button>

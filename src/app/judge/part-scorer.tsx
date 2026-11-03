@@ -74,12 +74,12 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
   const loadFor = (m: JudgePart['part_movements'][number]) => m.rx_load // already the team's version (resolvePart)
 
   return (
-    <div className="stack" style={{ gap: 14 }}>
-      {part.notes && <p className="notice">{part.notes}</p>}
-      {!part.scored && <p className="notice">{partTitle(part) ?? 'This part'} is a buy-in and isn’t scored on the leaderboard. Record it anyway so the head judge has it.</p>}
-      {locked && <p className="notice notice-ok">This score has been {draft.locked} by the head judge and can’t be changed here.</p>}
+    <div className="j-scorer">
+      {part.notes && <div className="j-banner">{part.notes}</div>}
+      {!part.scored && <div className="j-banner">{partTitle(part) ?? 'This part'} is a buy-in and isn’t scored on the leaderboard. Record it anyway so the head judge has it.</div>}
+      {locked && <div className="j-banner ok">This score has been {draft.locked} by the head judge and can’t be changed here.</div>}
 
-      <fieldset disabled={locked || submitted} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }} className="stack">
+      <fieldset disabled={locked || submitted} className="j-fields">
         {draft.entries.kind === 'for_time' && (
           <ForTime part={part} sex={sex} entries={draft.entries} loadFor={loadFor} onChange={setEntries}
             onTap={(dir) => tapEntries((e) => { if (e.kind !== 'for_time') return null; const t = forTimeTap(part, sex, e, dir, Date.now()); return t && { entries: t.entries, events: t.tick ? [ev('tick', { ...t.tick, via: 'tap' })] : [] } })} />
@@ -120,20 +120,30 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
         )}
       </fieldset>
 
-      <section className="card stack" style={{ borderColor: complete ? 'var(--gold)' : 'var(--line)' }}>
-        <div className="j-result">
-          <small>{part.score_type === 'for_time' && part.rounds > 1 ? `Total of ${part.rounds} rounds` : 'Score'}</small>
+      <section className={`j-panel j-score${complete ? ' ready' : ''}`}>
+        <div className="j-score-head">
+          <span>{part.score_type === 'for_time' && part.rounds > 1 ? `Total · ${part.rounds} rounds` : 'Score'}</span>
           <b>{result.display}</b>
-          {result.detail.length > 0 && <span className="small subtle">{result.detail.join(' · ')}</span>}
         </div>
+        {result.detail.length > 1 && (
+          <ul className="j-splits">
+            {result.detail.map((d, i) => {
+              const [k, ...v] = d.split(': ')
+              const val = v.join(': ')
+              if (val === 'Not started' || val === 'In progress') return null // only rounds with a result
+              return <li key={i}><span>{v.length ? k : ''}</span><b>{v.length ? val : k}</b></li>
+            })}
+          </ul>
+        )}
+        {result.detail.length === 1 && <p className="j-note">{result.detail[0]}</p>}
 
         {submitted ? (
-          <div className="stack-sm" style={{ textAlign: 'center' }}>
-            <span className={`pill ${locked ? 'pill-ok' : 'pill-gold'}`} style={{ justifySelf: 'center' }}>
-              {locked ? `${draft.locked === 'verified' ? 'Verified' : 'Rejected'} by head judge` : 'Submitted · waiting for the head judge'}
+          <div className="j-submitted">
+            <span className={`j-status ${locked ? 'ok' : 'gold'}`}>
+              {locked ? `${draft.locked === 'verified' ? 'Verified' : 'Rejected'} by head judge` : 'Submitted · awaiting head judge'}
             </span>
-            {draft.signed_by && <span className="small subtle">Agreed by {draft.signed_by}</span>}
-            {!locked && <button className="btn btn-ghost" onClick={() => commit({}, [ev('reopen')], 'draft')}>Edit this score</button>}
+            {draft.signed_by && <span className="j-note">Agreed by {draft.signed_by}</span>}
+            {!locked && <button type="button" className="j-tool" onClick={() => commit({}, [ev('reopen')], 'draft')}>Edit score</button>}
           </div>
         ) : (
           <SubmitPanel lane={lane} complete={complete} signedBy={draft.signed_by}
@@ -190,12 +200,16 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, elapsed >= (cap ?? Infinity)])
 
-  const chips = multi && (
-    <div className="j-rounds">
+  const roundsBar = multi && (
+    <div className="j-rounds" aria-label="Rounds">
       {entries.rounds.map((r, i) => {
         const v = roundValue(part, sex, r)
-        const finished = i < ri
-        return <span key={i} className={i === ri ? 'on' : finished ? 'done' : ''}>R{i + 1}<b>{finished && v.value != null ? formatTime(v.value) : '—'}</b></span>
+        return (
+          <div key={i} className={`j-rnd${i < ri ? ' done' : i === ri ? ' on' : ''}`}>
+            <span className="bar" />
+            <span className="lbl">R{i + 1}{i < ri && v.value != null && <b>{formatTime(v.value, false)}</b>}</span>
+          </div>
+        )
       })}
     </div>
   )
@@ -203,91 +217,97 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
   if (!round) {
     return (
       <>
-        {chips}
-        <p className="notice notice-ok">All {multi ? `${entries.rounds.length} rounds` : 'movements'} recorded. Check the score below with the captain.</p>
-        <button type="button" className="linkbtn" onClick={() => { const last = entries.rounds.length - 1; onChange({ kind: 'for_time', rounds: entries.rounds.map((r, i) => (i === last ? { started_at: null, ticks: [], capped: false, partial_reps: null } : r)) }, [ev('reset_round', { round: last + 1 })]) }}>
-          Redo the last {multi ? 'round' : 'attempt'}
-        </button>
+        <section className="j-timer">{roundsBar}</section>
+        <div className="j-banner ok">All {multi ? `${entries.rounds.length} rounds` : 'movements'} recorded. Check the score with the captain.</div>
+        <div className="j-toolbar">
+          <button type="button" className="j-tool" onClick={() => { const last = entries.rounds.length - 1; onChange({ kind: 'for_time', rounds: entries.rounds.map((r, i) => (i === last ? { started_at: null, ticks: [], capped: false, partial_reps: null } : r)) }, [ev('reset_round', { round: last + 1 })]) }}>
+            Redo last {multi ? 'round' : 'attempt'}
+          </button>
+        </div>
       </>
     )
   }
 
   const nextMv = round.ticks.length
   const remaining = cap != null ? cap - elapsed : null
-  const label = multi ? `Round ${ri + 1} of ${entries.rounds.length}` : 'Time'
+  const tickNow = (m: JudgePart['part_movements'][number]) => {
+    const at = Math.round(elapsed * 10) / 10
+    update({ ...round, reps_done: 0, ticks: [...round.ticks, { movement_id: m.id!, at }] }, [ev('tick', { round: ri + 1, movement_id: m.id, movement: m.name, at_seconds: at })])
+  }
 
   return (
     <>
-      {chips}
-      <div className={`j-clock${remaining != null && remaining <= 10 && running ? ' over' : ''}`}>
-        {formatTime(round.capped ? cap : elapsed)}
-        <small>{label}{cap != null ? ` · ${multi ? 'window' : 'cap'} ${formatTime(cap, false)}` : ''}{running && remaining != null ? ` · ${formatTime(Math.max(0, remaining), false)} left` : ''}</small>
-      </div>
+      <section className="j-timer">
+        {roundsBar}
+        <div className={`j-clock${remaining != null && remaining <= 10 && running ? ' over' : ''}`}>{formatTime(round.capped ? cap : elapsed)}</div>
+        <p className="j-clock-sub">
+          {multi ? `Round ${ri + 1} of ${entries.rounds.length}` : 'For time'}
+          {cap != null && ` · ${formatTime(cap, false)} ${multi ? 'window' : 'cap'}`}
+          {running && remaining != null && <span className="left"> · {formatTime(Math.max(0, remaining), false)} left</span>}
+        </p>
+        {!round.started_at && (
+          <button type="button" className="j-primary" onClick={() => update({ ...round, started_at: Date.now() }, [ev('start', { round: ri + 1 })])}>
+            {multi ? `Start round ${ri + 1}` : 'Start clock'}
+          </button>
+        )}
+      </section>
 
-      {!round.started_at && (
-        <button type="button" className="btn j-big" onClick={() => update({ ...round, started_at: Date.now() }, [ev('start', { round: ri + 1 })])}>
-          {multi ? `Start round ${ri + 1}` : 'Start clock'}
-        </button>
-      )}
-
-      <div className="stack-sm">
+      <ol className="j-list">
         {movements.map((m, i) => {
           const tick = round.ticks.find((t) => t.movement_id === m.id)
           const cur = !!round.started_at && !round.capped && i === nextMv
           const load = loadFor(m)
+          const reps = repsFor(m, sex)
           return (
-            <div key={m.id} className={`j-mv${cur ? ' cur' : ''}${tick ? ' done' : ''}`}>
-              <div>
-                <div className="nm">{repsFor(m, sex) || ''} {m.name}{load ? ` · ${load}` : ''}</div>
-                {!tick && <Standards text={m.standards} collapsible className="std" />}
-              </div>
-              <button type="button" className="j-tick" disabled={!cur} aria-label={`Tick ${m.name}`}
-                onClick={() => update({ ...round, reps_done: 0, ticks: [...round.ticks, { movement_id: m.id!, at: Math.round(elapsed * 10) / 10 }] }, [ev('tick', { round: ri + 1, movement_id: m.id, movement: m.name, at_seconds: Math.round(elapsed * 10) / 10 })])}>
-                {tick ? formatTime(tick.at) : '✓'}
-              </button>
-              {cur && repsFor(m, sex) > 0 && (
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <TapPad what="Reps done" count={round.reps_done ?? 0} need={repsFor(m, sex)} step={tapStep(m)} onTap={onTap} />
+            <li key={m.id} className={`j-item${cur ? ' cur' : ''}${tick ? ' done' : ''}`}>
+              <div className="j-item-row">
+                <span className="j-idx" aria-hidden>{tick ? '✓' : i + 1}</span>
+                <div className="j-item-main">
+                  <div className="j-item-name">{reps > 0 && <b>{reps}</b>} {m.name}</div>
+                  {load && <div className="j-item-meta">{load}</div>}
                 </div>
-              )}
-            </div>
+                {tick
+                  ? <span className="j-split">{formatTime(tick.at)}</span>
+                  : cur && <button type="button" className="j-check" aria-label={`${m.name} done`} onClick={() => tickNow(m)}>✓ Done</button>}
+              </div>
+              {!tick && (cur || !round.started_at) && <Standards text={m.standards} collapsible className="std" />}
+              {cur && reps > 0 && <TapPad count={round.reps_done ?? 0} need={reps} step={tapStep(m)} onTap={onTap} />}
+            </li>
           )
         })}
-      </div>
+      </ol>
 
       {round.capped && (
-        <div className="card stack-sm" style={{ borderColor: 'var(--warn)' }}>
-          <b>Time’s up{multi ? ` on round ${ri + 1}` : ''}.</b>
-          <span className="small muted">How many {movements[nextMv]?.name ?? 'reps'} reps did they get?</span>
+        <section className="j-panel warn">
+          <h3>Time’s up{multi ? ` · round ${ri + 1}` : ''}</h3>
+          <p className="j-note">Reps completed on {movements[nextMv]?.name ?? 'the current movement'}</p>
           <Stepper label="" value={round.partial_reps} max={Math.max(0, repsFor(movements[nextMv] ?? { reps: 0, reps_female: null }, sex) - 1)}
             onChange={(v) => update({ ...round, partial_reps: v }, [ev('partial_reps', { round: ri + 1, reps: v })])} />
-          <button type="button" className="btn" disabled={round.partial_reps == null}
+          <button type="button" className="j-primary" disabled={round.partial_reps == null}
             onClick={() => update({ ...round, partial_reps: round.partial_reps ?? 0, confirmed: true }, [ev('round_capped_done', { round: ri + 1, reps: round.partial_reps })])}>
-            {round.partial_reps == null ? 'Enter reps above' : multi && ri < entries.rounds.length - 1 ? 'Save and go to next round' : 'Save'}
+            {round.partial_reps == null ? 'Enter reps' : multi && ri < entries.rounds.length - 1 ? 'Save · next round' : 'Save'}
           </button>
-        </div>
+        </section>
       )}
 
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <button type="button" className="btn btn-ghost btn-sm" disabled={!round.ticks.length || round.capped}
+      <div className="j-toolbar">
+        <button type="button" className="j-tool" disabled={!round.ticks.length || round.capped}
           onClick={() => update({ ...round, reps_done: 0, ticks: round.ticks.slice(0, -1) }, [ev('untick', { round: ri + 1, movement_id: round.ticks.at(-1)?.movement_id })])}>
-          Undo last tick
+          Undo tick
         </button>
         {running && cap != null && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => update(capRound(round), [ev('cap', { round: ri + 1, auto: false, at_seconds: Math.round(elapsed * 10) / 10 })])}>
+          <button type="button" className="j-tool" onClick={() => update(capRound(round), [ev('cap', { round: ri + 1, auto: false, at_seconds: Math.round(elapsed * 10) / 10 })])}>
             Time’s up
           </button>
         )}
-        {round.started_at && (
-          confirmReset ? (
-            <span className="row" style={{ gap: 8 }}>
-              <button type="button" className="btn btn-danger btn-sm" onClick={() => { setConfirmReset(false); update({ started_at: null, ticks: [], capped: false, partial_reps: null, confirmed: false, reps_done: 0 }, [ev('reset_round', { round: ri + 1 })]) }}>Restart round</button>
-              <button type="button" className="linkbtn" onClick={() => setConfirmReset(false)}>Keep</button>
-            </span>
-          ) : (
-            <button type="button" className="linkbtn danger" onClick={() => setConfirmReset(true)}>Restart{multi ? ' round' : ''}</button>
-          )
-        )}
+        {round.started_at && (confirmReset ? (
+          <>
+            <button type="button" className="j-tool danger" onClick={() => { setConfirmReset(false); update({ started_at: null, ticks: [], capped: false, partial_reps: null, confirmed: false, reps_done: 0 }, [ev('reset_round', { round: ri + 1 })]) }}>Confirm restart</button>
+            <button type="button" className="j-tool" onClick={() => setConfirmReset(false)}>Cancel</button>
+          </>
+        ) : (
+          <button type="button" className="j-tool danger" onClick={() => setConfirmReset(true)}>Restart{multi ? ' round' : ''}</button>
+        ))}
       </div>
     </>
   )
@@ -305,7 +325,7 @@ function Amrap({ part, sex, loadFor, entries, onChange, onTap }: {
       {repsPerRound(part, sex) > 0 && (() => {
         const pos = amrapPosition(part, sex, entries.reps ?? 0)
         return (
-          <TapPad what={pos ? `Round ${(entries.rounds ?? 0) + 1} · ${pos.movement.name}` : 'Reps'} count={pos?.done ?? 0} need={pos?.need} step={tapStep(pos?.movement)}
+          <TapPad what={pos ? `Round ${(entries.rounds ?? 0) + 1} · ${pos.movement.name}` : undefined} count={pos?.done ?? 0} need={pos?.need} step={tapStep(pos?.movement)}
             onTap={onTap} />
         )
       })()}
@@ -358,16 +378,23 @@ function MaxLoad({ part, lane, loadFor, entries, onChange }: {
 function MovementList({ part, sex, loadFor }: { part: JudgePart; sex: Sex; loadFor: (m: JudgePart['part_movements'][number]) => string | null }) {
   if (!part.part_movements.length) return null
   return (
-    <div className="stack-sm">
-      {part.part_movements.map((m) => (
-        <div key={m.id} className="j-mv" style={{ gridTemplateColumns: '1fr' }}>
-          <div>
-            <div className="nm">{repsFor(m, sex) || ''} {m.name}{loadFor(m) ? ` · ${loadFor(m)}` : ''}</div>
+    <ol className="j-list">
+      {part.part_movements.map((m, i) => {
+        const reps = repsFor(m, sex)
+        return (
+          <li key={m.id} className="j-item">
+            <div className="j-item-row">
+              <span className="j-idx" aria-hidden>{i + 1}</span>
+              <div className="j-item-main">
+                <div className="j-item-name">{reps > 0 && <b>{reps}</b>} {m.name}</div>
+                {loadFor(m) && <div className="j-item-meta">{loadFor(m)}</div>}
+              </div>
+            </div>
             <Standards text={m.standards} collapsible className="std" />
-          </div>
-        </div>
-      ))}
-    </div>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
@@ -378,12 +405,13 @@ function CapClock({ part }: { part: JudgePart }) {
   if (part.time_cap_seconds == null) return null
   const left = start == null ? part.time_cap_seconds : Math.max(0, part.time_cap_seconds - (now - start) / 1000)
   return (
-    <div className="row" style={{ justifyContent: 'space-between' }}>
-      <span className={`j-clock${start != null && left <= 10 ? ' over' : ''}`} style={{ fontSize: '2.2rem', padding: 0 }}>{formatTime(left, false)}</span>
+    <section className="j-timer">
+      <div className={`j-clock${start != null && left <= 10 ? ' over' : ''}`}>{formatTime(left, false)}</div>
+      <p className="j-clock-sub">{start == null ? `${formatTime(part.time_cap_seconds, false)} on the clock` : 'Counting down'}</p>
       {start == null
-        ? <button type="button" className="btn" onClick={() => setStart(Date.now())}>Start {formatTime(part.time_cap_seconds, false)}</button>
-        : <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStart(null)}>Reset clock</button>}
-    </div>
+        ? <button type="button" className="j-primary" onClick={() => setStart(Date.now())}>Start {formatTime(part.time_cap_seconds, false)}</button>
+        : <div className="j-toolbar"><button type="button" className="j-tool" onClick={() => setStart(null)}>Reset clock</button></div>}
+    </section>
   )
 }
 
@@ -404,22 +432,24 @@ function DecimalInput({ value, onChange, label, placeholder, className = 'input'
   )
 }
 
-/** Big rep-tap button: each tap counts `step` reps. Feeds the live race screen. */
-function TapPad({ what, count, need, step, onTap }: { what: string; count: number; need?: number; step: number; onTap: (dir: 1 | -1) => void }) {
+/** Rep counter + tap buttons: each tap counts `step` reps. Feeds the live race screen. */
+function TapPad({ what, count, need, step, onTap }: { what?: string; count: number; need?: number; step: number; onTap: (dir: 1 | -1) => void }) {
   const left = need != null ? Math.max(0, need - count) : null
-  const label = `+${step} ${step === 1 ? 'REP' : 'REPS'}`
   return (
     <div className="j-tap">
-      {/* big counter for a quick glance mid-workout */}
       <div className="j-count" aria-live="polite">
-        <span className="what">{what}</span>
-        <span className="num"><b>{count}</b>{need != null && <span className="of">/{need}</span>}</span>
-        {left != null && <span className="left">{left === 0 ? 'Done' : `${left} to go`}</span>}
+        <span className="num"><b>{count}</b>{need != null && <span className="of">/ {need}</span>}</span>
+        <span className="meta">
+          {what && <span>{what}</span>}
+          {left != null && <em>{left === 0 ? 'Complete' : `${left} to go`}</em>}
+        </span>
       </div>
-      <button type="button" className="minus" aria-label={`Take off ${step} ${step === 1 ? 'rep' : 'reps'}`} disabled={count <= 0 && need != null} onClick={() => onTap(-1)}>−{step}</button>
-      <button type="button" className="plus" aria-label={`Add ${step} ${step === 1 ? 'rep' : 'reps'}`} onClick={() => { navigator.vibrate?.(15); onTap(1) }}>
-        {label}
-      </button>
+      <div className="j-tap-btns">
+        <button type="button" className="minus" aria-label={`Take off ${step} ${step === 1 ? 'rep' : 'reps'}`} disabled={count <= 0 && need != null} onClick={() => onTap(-1)}>−{step}</button>
+        <button type="button" className="plus" aria-label={`Add ${step} ${step === 1 ? 'rep' : 'reps'}`} onClick={() => { navigator.vibrate?.(15); onTap(1) }}>
+          +{step} {step === 1 ? 'rep' : 'reps'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -443,23 +473,23 @@ function SubmitPanel({ lane, complete, signedBy, onSign, onSubmit }: {
   lane: Lane; complete: boolean; signedBy: string; onSign: (name: string) => void; onSubmit: () => void
 }) {
   const [agreed, setAgreed] = useState(false)
-  if (!complete) return <p className="small subtle" style={{ textAlign: 'center' }}>Finish entering the score, then the captain checks it here.</p>
+  if (!complete) return <p className="j-note">Finish the score, then the captain checks it here.</p>
   const captain = lane.team.athletes.find((a) => a.is_captain) ?? lane.team.athletes[0]
   const name = signedBy || (captain ? `${captain.first_name} ${captain.last_name}`.trim() : '')
   return (
-    <div className="stack-sm">
-      <span className="small" style={{ fontWeight: 600 }}>Show the captain this score</span>
-      <div className="seg">
+    <div className="j-sign">
+      <p className="j-label">Captain check</p>
+      <div className="j-choice">
         {lane.team.athletes.map((a) => {
           const n = `${a.first_name} ${a.last_name}`.trim()
-          return <button key={a.id} type="button" aria-pressed={n === name} onClick={() => onSign(n)}>{n}{a.is_captain ? ' (captain)' : ''}</button>
+          return <button key={a.id} type="button" aria-pressed={n === name} onClick={() => onSign(n)}>{n}{a.is_captain && <small>Captain</small>}</button>
         })}
       </div>
-      <label className="check" style={{ fontSize: '1rem' }}>
+      <label className="j-agree">
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-        {name || 'The athlete'} has checked and agrees with this score
+        <span>{name || 'The athlete'} has checked and agrees with this score</span>
       </label>
-      <button type="button" className="btn j-big" disabled={!agreed} onClick={() => { if (!signedBy && name) onSign(name); onSubmit() }}>
+      <button type="button" className="j-primary" disabled={!agreed} onClick={() => { if (!signedBy && name) onSign(name); onSubmit() }}>
         Submit score
       </button>
     </div>

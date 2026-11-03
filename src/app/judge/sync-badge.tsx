@@ -20,8 +20,8 @@ export function SyncBadge({ offline }: { offline: boolean }) {
   }, [])
 
   if (!online || offline || state.error === 'offline') {
-    return <span className="j-sync bad">No signal · {state.pending ? `${state.pending} saved on phone` : 'scores safe on phone'}</span>
+    return <span className="j-sync bad"><i />{state.pending ? `Offline · ${state.pending} saved` : 'Offline · saved on phone'}</span>
   }
-  if (state.pending) return <span className="j-sync wait">Sending {state.pending}…</span>
-  return <span className="j-sync ok">● Synced</span>
+  if (state.pending) return <span className="j-sync wait"><i />Sending…</span>
+  return <span className="j-sync ok"><i />Synced</span>
 }

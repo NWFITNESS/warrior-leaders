@@ -37,38 +37,39 @@ export function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
   }
 
   return (
-    <div className="stack" style={{ paddingTop: 12 }}>
-      <div style={{ justifySelf: 'center' }}><Logo width={170} variant="stacked" /></div>
-      <div className="stack-sm" style={{ textAlign: 'center' }}>
-        <span className="eyebrow">Judges</span>
-        <h1 style={{ fontSize: '1.8rem' }}>{judge ? `Hi ${judge.name.split(' ')[0]}` : 'Who’s judging?'}</h1>
+    <div className="j-signin">
+      <div className="j-signin-logo"><Logo width={150} variant="stacked" /></div>
+      <div className="j-signin-head">
+        <h1>{judge ? `Hi ${judge.name.split(' ')[0]}` : 'Who’s judging?'}</h1>
+        <p className="j-note">{judge ? 'Enter today’s 4-digit judge code from the briefing.' : 'Pick your name to start.'}</p>
       </div>
 
-      {loadError && <p className="notice notice-bad">Can’t reach the server. Check your signal and reload the page.</p>}
-      {!judges && !loadError && <p className="subtle" style={{ textAlign: 'center' }}>Loading judges…</p>}
+      {loadError && <div className="j-banner bad">Can’t reach the server. Check your signal and reload the page.</div>}
+      {!judges && !loadError && <p className="j-note" style={{ textAlign: 'center' }}>Loading judges…</p>}
 
       {judges && !judge && (
-        <div className="stack-sm">
-          {judges.length === 0 && <p className="notice">No judges have been set up yet. Ask the head judge.</p>}
+        <div className="j-group">
+          {judges.length === 0 && <p className="j-note" style={{ padding: 16 }}>No judges have been set up yet. Ask the head judge.</p>}
           {judges.map((j) => (
             <button key={j.id} type="button" className="j-name" onClick={() => setJudgeId(j.id)}>
-              {j.name}
-              {j.role === 'head' && <span className="pill pill-gold">Head judge</span>}
+              <span>{j.name}</span>
+              {j.role === 'head' && <small>Head judge</small>}
+              <span className="chev" aria-hidden>›</span>
             </button>
           ))}
         </div>
       )}
 
       {judge && (
-        <form onSubmit={submit} className="stack">
-          <label className="field">
-            <span>Today’s judge code</span>
-            <input id="judge-code" className="input j-code" inputMode="numeric" autoComplete="one-time-code" maxLength={4} autoFocus
+        <form onSubmit={submit} className="j-signin-form">
+          <label>
+            <span className="j-label">Judge code</span>
+            <input id="judge-code" className="j-code" inputMode="numeric" autoComplete="one-time-code" maxLength={4} autoFocus
               value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))} />
           </label>
-          {error && <p className="notice notice-bad">{error}</p>}
-          <button className="btn j-big" disabled={busy || code.length !== 4}>{busy ? 'Checking…' : 'Start judging'}</button>
-          <button type="button" className="linkbtn" style={{ justifySelf: 'center' }} onClick={() => { setJudgeId(null); setCode(''); setError('') }}>
+          {error && <div className="j-banner bad">{error}</div>}
+          <button className="j-primary" disabled={busy || code.length !== 4}>{busy ? 'Checking…' : 'Start judging'}</button>
+          <button type="button" className="j-tool" style={{ justifySelf: 'center' }} onClick={() => { setJudgeId(null); setCode(''); setError('') }}>
             Not {judge.name.split(' ')[0]}? Pick another name
           </button>
         </form>
