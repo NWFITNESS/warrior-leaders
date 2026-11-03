@@ -247,7 +247,7 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
               </button>
               {cur && repsFor(m, sex) > 0 && (
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <TapPad what={m.name} count={round.reps_done ?? 0} need={repsFor(m, sex)} step={tapStep(m)} onTap={onTap} />
+                  <TapPad what="Reps done" count={round.reps_done ?? 0} need={repsFor(m, sex)} step={tapStep(m)} onTap={onTap} />
                 </div>
               )}
             </div>
@@ -406,12 +406,19 @@ function DecimalInput({ value, onChange, label, placeholder, className = 'input'
 
 /** Big rep-tap button: each tap counts `step` reps. Feeds the live race screen. */
 function TapPad({ what, count, need, step, onTap }: { what: string; count: number; need?: number; step: number; onTap: (dir: 1 | -1) => void }) {
+  const left = need != null ? Math.max(0, need - count) : null
+  const label = `+${step} ${step === 1 ? 'REP' : 'REPS'}`
   return (
     <div className="j-tap">
-      <button type="button" className="minus" aria-label={`Take off ${step} ${what}`} disabled={count <= 0 && need != null} onClick={() => onTap(-1)}>−{step}</button>
-      <button type="button" className="plus" aria-label={`Add ${step} ${what}`} onClick={() => { navigator.vibrate?.(15); onTap(1) }}>
-        <b>+{step}</b>
-        <small>{what} · <span className="mono">{count}{need != null ? `/${need}` : ''}</span></small>
+      {/* big counter for a quick glance mid-workout */}
+      <div className="j-count" aria-live="polite">
+        <span className="what">{what}</span>
+        <span className="num"><b>{count}</b>{need != null && <span className="of">/{need}</span>}</span>
+        {left != null && <span className="left">{left === 0 ? 'Done' : `${left} to go`}</span>}
+      </div>
+      <button type="button" className="minus" aria-label={`Take off ${step} ${step === 1 ? 'rep' : 'reps'}`} disabled={count <= 0 && need != null} onClick={() => onTap(-1)}>−{step}</button>
+      <button type="button" className="plus" aria-label={`Add ${step} ${step === 1 ? 'rep' : 'reps'}`} onClick={() => { navigator.vibrate?.(15); onTap(1) }}>
+        {label}
       </button>
     </div>
   )

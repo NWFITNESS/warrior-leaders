@@ -175,14 +175,18 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .j-load { display: grid; gap: 8px; }
 .j-load .row-h, .j-load .row-v { display: grid; gap: 8px; align-items: center; }
 .j-load input { text-align: center; font-family: var(--f-mono); font-size: 1.3rem; height: 54px; }
-.j-tap { display: grid; grid-template-columns: 72px 1fr; gap: 8px; margin-top: 4px; }
+.j-tap { display: grid; grid-template-columns: 72px 1fr; gap: 8px; margin-top: 6px; }
 .j-tap button { border-radius: 12px; font: inherit; cursor: pointer; touch-action: manipulation; user-select: none; }
-.j-tap .minus { border: 1px solid var(--line-2); background: transparent; color: var(--muted); font-family: var(--f-mono); font-size: 1.1rem; }
+.j-count { grid-column: 1 / -1; display: grid; justify-items: center; line-height: 1; padding: 6px 0 4px; }
+.j-count .what { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--subtle); margin-bottom: 4px; }
+.j-count .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.j-count .num b { font-size: 4rem; font-weight: 600; color: var(--text); }
+.j-count .num .of { font-size: 2rem; color: var(--subtle); margin-left: 2px; }
+.j-count .left { margin-top: 6px; font-size: 1rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold-hi); }
+.j-tap .minus { border: 1px solid var(--line-2); background: transparent; color: var(--muted); font-family: var(--f-mono); font-size: 1.2rem; min-height: 84px; }
 .j-tap .minus:disabled { opacity: 0.35; }
-.j-tap .plus { min-height: 84px; border: 0; background: linear-gradient(160deg, var(--gold-hi), var(--gold)); color: #0a0a0a; display: grid; place-items: center; padding: 8px; }
+.j-tap .plus { min-height: 84px; border: 0; background: linear-gradient(160deg, var(--gold-hi), var(--gold)); color: #0a0a0a; display: grid; place-items: center; padding: 8px; font-family: var(--f-display); font-weight: 800; font-size: 1.9rem; letter-spacing: 0.04em; }
 .j-tap .plus:active { transform: scale(0.98); filter: brightness(1.12); }
-.j-tap .plus b { font-family: var(--f-mono); font-size: 2.2rem; line-height: 1; }
-.j-tap .plus small { font-size: 0.82rem; font-weight: 600; margin-top: 4px; }
 .j-tabs { display: flex; gap: 6px; }
 .j-tabs button { flex: 1; border: 1px solid var(--line-2); background: transparent; color: var(--muted); border-radius: 10px; padding: 10px 6px 8px; font: inherit; font-weight: 700; cursor: pointer; }
 .j-tabs button[aria-pressed='true'] { border-color: var(--gold); color: var(--gold-hi); background: rgba(150, 119, 5, 0.12); }
