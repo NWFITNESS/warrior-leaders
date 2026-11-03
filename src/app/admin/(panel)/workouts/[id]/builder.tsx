@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { SCORE_TYPES, formatCap, parseCap, partTitle, partTitleOr, type Movement, type ScoreType, type Workout, type WorkoutPart } from '@/lib/types'
 import { deleteWorkout, duplicateWorkout, saveWorkout, type WorkoutInput } from '../actions'
+import { JudgePreview } from './judge-preview'
 
 type Part = Omit<WorkoutPart, 'part_movements'> & { id: string; capText: string; part_movements: Mv[] }
 type Mv = Movement & { id: string }
@@ -79,8 +80,14 @@ export function Builder({ workout }: { workout: Workout }) {
     })
   }
 
+  // the judge's-phone preview reads the unsaved form (blank movement rows are skipped, like on save)
+  const previewParts = parts.map(({ capText, ...p }) => ({
+    ...p, time_cap_seconds: parseCap(capText), part_movements: p.part_movements.filter((m) => m.name.trim()),
+  }))
+
   return (
-    <div className="stack" style={{ gap: 20 }}>
+    <div className="builder-layout">
+    <div className="stack" style={{ gap: 20, minWidth: 0 }}>
       <div className="spread">
         <div className="stack-sm">
           <Link href="/admin/workouts" className="small">← All workouts</Link>
@@ -297,6 +304,8 @@ export function Builder({ workout }: { workout: Workout }) {
           <button className="linkbtn danger" onClick={() => setConfirmDelete(true)}>Delete workout</button>
         )}
       </div>
+    </div>
+    <JudgePreview number={number} name={name} description={description} parts={previewParts} />
     </div>
   )
 }

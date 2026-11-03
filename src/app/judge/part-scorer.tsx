@@ -10,7 +10,8 @@ import { parseCap, partTitle, resolvePart } from '@/lib/types'
 
 const ev = (kind: string, payload: Record<string, unknown> = {}): JudgeEvent => ({ kind, payload, at: new Date().toISOString() })
 
-function initialDraft(lane: Lane, part: JudgePart): Draft {
+function initialDraft(lane: Lane, part: JudgePart, preview = false): Draft {
+  if (preview) return { entries: emptyEntries(part), tiebreak: '', signed_by: '', status: 'draft', updatedAt: 0 }
   const local = getDraft(lane.lane_assignment_id, part.id)
   const server = lane.scores.find((s) => s.part_id === part.id)
   const serverEntries = server?.entries && 'kind' in server.entries ? (server.entries as Entries) : null
@@ -22,11 +23,12 @@ function initialDraft(lane: Lane, part: JudgePart): Draft {
   return { entries: emptyEntries(part), tiebreak: '', signed_by: '', status: 'draft', updatedAt: 0, locked }
 }
 
-export function PartScorer({ lane, part: rawPart }: { lane: Lane; part: JudgePart }) {
+/** `preview`: the admin's workout preview — same screens, but nothing is stored on this device or sent. */
+export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lane; part: JudgePart; preview?: boolean }) {
   // Scaled teams see (and are scored on) the Scaled version of each movement
   const part = resolvePart(rawPart, lane.team.level)
   const sex: Sex = lane.team.sex
-  const [draft, setDraft] = useState<Draft>(() => initialDraft(lane, part))
+  const [draft, setDraft] = useState<Draft>(() => initialDraft(lane, part, preview))
   const draftRef = useRef(draft)
   draftRef.current = draft
 
@@ -40,6 +42,7 @@ export function PartScorer({ lane, part: rawPart }: { lane: Lane; part: JudgePar
     const d: Draft = { ...draftRef.current, ...next, status, updatedAt: Date.now() }
     draftRef.current = d
     setDraft(d)
+    if (preview) return
     putDraft(lane.lane_assignment_id, part.id, d)
     const r = computeScore(part, sex, d.entries)
     const tb = d.tiebreak.trim() ? parseCap(d.tiebreak) ?? Number(d.tiebreak) : null
