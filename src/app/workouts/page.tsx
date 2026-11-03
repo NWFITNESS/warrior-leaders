@@ -1,4 +1,5 @@
 import { PublicNav } from '@/components/PublicNav'
+import { Standards } from '@/components/Standards'
 import { getBoardData } from '@/lib/public-data'
 import { describeMovement, formatCap, hasScaledVersion, partTitle, resolveMovement, scoreTypeLabel } from '@/lib/types'
 
@@ -35,10 +36,10 @@ export default async function WorkoutsPage() {
                       const sc = resolveMovement(m, 'scaled')
                       return (
                         <tr key={m.id}>
-                          <td><b>{describeMovement(m)}</b>{m.standards && <div className="small muted" style={{ marginTop: 2 }}>{m.standards}</div>}</td>
+                          <td><b>{describeMovement(m)}</b><Standards text={m.standards} className="small muted std-public" /></td>
                           <td>
                             <b style={hasScaledVersion(m) ? undefined : { color: 'var(--muted)', fontWeight: 500 }}>{describeMovement(sc)}</b>
-                            {sc.standards && sc.standards !== m.standards && <div className="small muted" style={{ marginTop: 2 }}>{sc.standards}</div>}
+                            {sc.standards !== m.standards && <Standards text={sc.standards} className="small muted std-public" />}
                           </td>
                         </tr>
                       )

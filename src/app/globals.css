@@ -303,3 +303,15 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
   .builder-layout { grid-template-columns: minmax(0, 1fr); }
   .jp { position: static; justify-items: center; }
 }
+
+/* Movement standards: bullets; tap-to-open dropdown in the judge app */
+.std-list { margin: 4px 0 0; padding-left: 1.1em; display: grid; gap: 3px; }
+.std-list li { line-height: 1.35; }
+.std-list li::marker { color: var(--gold-hi); }
+.std-drop { margin-top: 4px; }
+.std-drop summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--gold-hi); padding: 4px 0; user-select: none; }
+.std-drop summary::-webkit-details-marker { display: none; }
+.std-drop summary::before { content: '▸'; transition: transform 0.15s; display: inline-block; }
+.std-drop[open] summary::before { transform: rotate(90deg); }
+.std-drop .std-list { font-size: 0.85rem; color: var(--muted); }
+.std-public { margin-top: 2px; }

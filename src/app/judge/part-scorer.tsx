@@ -7,6 +7,7 @@ import {
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
 } from '@/lib/scoring'
 import { parseCap, partTitle, resolvePart } from '@/lib/types'
+import { Standards } from '@/components/Standards'
 
 const ev = (kind: string, payload: Record<string, unknown> = {}): JudgeEvent => ({ kind, payload, at: new Date().toISOString() })
 
@@ -238,7 +239,7 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
             <div key={m.id} className={`j-mv${cur ? ' cur' : ''}${tick ? ' done' : ''}`}>
               <div>
                 <div className="nm">{repsFor(m, sex) || ''} {m.name}{load ? ` · ${load}` : ''}</div>
-                {m.standards && (cur || !round.started_at) && <div className="std">{m.standards}</div>}
+                {!tick && <Standards text={m.standards} collapsible className="std" />}
               </div>
               <button type="button" className="j-tick" disabled={!cur} aria-label={`Tick ${m.name}`}
                 onClick={() => update({ ...round, reps_done: 0, ticks: [...round.ticks, { movement_id: m.id!, at: Math.round(elapsed * 10) / 10 }] }, [ev('tick', { round: ri + 1, movement_id: m.id, movement: m.name, at_seconds: Math.round(elapsed * 10) / 10 })])}>
@@ -348,11 +349,7 @@ function MaxLoad({ part, lane, loadFor, entries, onChange }: {
           </div>
         ))}
       </div>
-      {part.part_movements.some((m) => m.standards) && (
-        <details className="small muted"><summary>Standards</summary>
-          {part.part_movements.filter((m) => m.standards).map((m) => <p key={m.id} style={{ marginTop: 6 }}><b>{m.name}:</b> {m.standards}</p>)}
-        </details>
-      )}
+      {part.part_movements.map((m) => <Standards key={m.id} text={m.standards} collapsible label={`${m.name} standards`} className="std" />)}
     </>
   )
 }
@@ -366,7 +363,7 @@ function MovementList({ part, sex, loadFor }: { part: JudgePart; sex: Sex; loadF
         <div key={m.id} className="j-mv" style={{ gridTemplateColumns: '1fr' }}>
           <div>
             <div className="nm">{repsFor(m, sex) || ''} {m.name}{loadFor(m) ? ` · ${loadFor(m)}` : ''}</div>
-            {m.standards && <div className="std">{m.standards}</div>}
+            <Standards text={m.standards} collapsible className="std" />
           </div>
         </div>
       ))}
