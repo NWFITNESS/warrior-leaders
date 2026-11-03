@@ -224,7 +224,7 @@ export function Builder({ workout }: { workout: Workout }) {
                     {rule === 'movement' && (
                       <select className="input" aria-label="Tiebreak movement" value={p.tiebreak_movement_id ?? ''} onChange={(e) => updatePart(p.id, { tiebreak_movement_id: e.target.value || null })}>
                         <option value="">Pick a movement…</option>
-                        {named.map((m) => <option key={m.id} value={m.id}>End of {m.name}</option>)}
+                        {named.map((m, i) => <option key={m.id} value={m.id}>End of {m.name}{named.filter((x) => x.name.trim() === m.name.trim()).length > 1 ? ` (movement ${i + 1})` : ''}</option>)}
                       </select>
                     )}
                     {rule !== 'none' && (

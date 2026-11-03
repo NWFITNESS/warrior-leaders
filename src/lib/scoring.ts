@@ -183,7 +183,9 @@ export function autoTiebreak(part: WorkoutPart, sex: Sex, entries: Entries): { v
   }
   const mv = part.part_movements.find((m) => m.id === part.tiebreak_movement_id)
   const tick = mv ? entries.rounds[0]?.ticks.find((t) => t.movement_id === mv.id) : undefined
-  return { value: tick ? tick.at : null, label: mv ? `end of ${mv.name}${entries.rounds.length > 1 ? ', round 1' : ''}` : 'movement not set' }
+  // same movement twice (e.g. two sets of double unders): say which one
+  const nth = mv && part.part_movements.filter((m) => m.name === mv.name).length > 1 ? ` (movement ${part.part_movements.indexOf(mv) + 1})` : ''
+  return { value: tick ? tick.at : null, label: mv ? `end of ${mv.name}${nth}${entries.rounds.length > 1 ? ', round 1' : ''}` : 'movement not set' }
 }
 
 /** Max-load completeness needs to know who lifts: every athlete × lift (or every lift for the pair). */
