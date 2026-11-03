@@ -16,7 +16,7 @@ export default async function AdminLeaderboard({ searchParams }: { searchParams:
     supabase.from('wl_competition_settings').select('points_method, custom_points').single(),
     supabase.from('wl_divisions').select('id, name, sex, level').order('sort_order'),
     supabase.from('wl_teams').select('id, name, division_id, athletes:wl_athletes(first_name, last_name, position)').order('name'),
-    supabase.from('wl_workouts').select('id, number, name, combine_parts, parts:wl_workout_parts(*, part_movements:wl_part_movements(*))').order('number'),
+    supabase.from('wl_workouts').select('id, number, name, combine_parts, parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').order('number'),
     supabase.from('wl_scores').select('part_id, team_id, value, tiebreak_value, capped, entries').eq('status', 'verified'),
     supabase.from('wl_releases').select('part_id, division_id, released_at'),
   ])

@@ -10,7 +10,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
   const { supabase } = await requireStaff()
   const { data: workout } = await supabase
     .from('wl_workouts')
-    .select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements(*))')
+    .select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))')
     .eq('id', id)
     .maybeSingle<Workout>()
   if (!workout) notFound()

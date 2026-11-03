@@ -11,7 +11,7 @@ export default async function WorkoutsPage() {
   const { supabase } = await requireStaff()
   const { data: workouts } = await supabase
     .from('wl_workouts')
-    .select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements(id))')
+    .select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(id))')
     .order('number')
     .returns<Workout[]>()
 

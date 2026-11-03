@@ -9,7 +9,7 @@ export default async function HeatsPage({ searchParams }: { searchParams: Promis
   const { workout: workoutParam } = await searchParams
   const { supabase } = await requireStaff()
   const [{ data: workouts }, { data: settings }, { data: divisions }, { data: teams }, { data: judges }] = await Promise.all([
-    supabase.from('wl_workouts').select('id, number, name, status, description, parts:wl_workout_parts(id, label, name, sort_order, score_type, direction, time_cap_seconds, rounds, scored, part_movements:wl_part_movements(*))').order('number'),
+    supabase.from('wl_workouts').select('id, number, name, status, description, parts:wl_workout_parts(id, label, name, sort_order, score_type, direction, time_cap_seconds, rounds, scored, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').order('number'),
     supabase.from('wl_competition_settings').select('lanes_per_heat, live_heat_id').single(),
     supabase.from('wl_divisions').select('id, name, sort_order, level, sex').order('sort_order'),
     supabase.from('wl_teams').select('id, name, bib, division_id').order('name'),

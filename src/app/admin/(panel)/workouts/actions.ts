@@ -44,7 +44,7 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
   if (!input.name.trim()) return { error: 'Give the workout a name.' }
   if (input.parts.length === 0) return { error: 'A workout needs at least one part.' }
 
-  const { data: before } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements(*))').eq('id', input.id).single()
+  const { data: before } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('id', input.id).single()
 
   const { error: wErr } = await supabase.from('wl_workouts').update({
     number: input.number,
@@ -136,7 +136,7 @@ export async function deleteWorkout(id: string) {
     ? await supabase.from('wl_scores').select('id', { count: 'exact', head: true }).in('part_id', partIds)
     : { count: 0 }
   if (count) throw new Error('This workout already has scores and can’t be deleted.')
-  const { data: before } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements(*))').eq('id', id).single()
+  const { data: before } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('id', id).single()
   await supabase.from('wl_workouts').delete().eq('id', id)
   await audit(supabase, { actor, action: 'workout.delete', entity: 'workout', entity_id: id, before })
   revalidatePath('/admin/workouts')
@@ -145,19 +145,23 @@ export async function deleteWorkout(id: string) {
 
 export async function duplicateWorkout(id: string) {
   const { supabase, actor } = await requireStaff()
-  const { data: src } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements(*))').eq('id', id).single()
+  const { data: src } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('id', id).single()
   if (!src) throw new Error('Workout not found')
   const { data: last } = await supabase.from('wl_workouts').select('number').order('number', { ascending: false }).limit(1).single()
   const { data: copy } = await supabase.from('wl_workouts')
     .insert({ number: (last?.number ?? 0) + 1, name: `${src.name} (copy)`, description: src.description, combine_parts: src.combine_parts })
     .select('id').single()
   for (const p of src.workout_parts as (WorkoutPart & { id: string; workout_id: string })[]) {
-    const { id: _pid, workout_id: _wid, part_movements, ...rest } = p
-    const { data: np } = await supabase.from('wl_workout_parts').insert({ ...rest, workout_id: copy!.id }).select('id').single()
+    const { id: _pid, workout_id: _wid, part_movements, tiebreak_movement_id: tbMv, ...rest } = p
+    const { data: np } = await supabase.from('wl_workout_parts').insert({ ...rest, tiebreak_movement_id: null, workout_id: copy!.id }).select('id').single()
     if (part_movements.length) {
-      await supabase.from('wl_part_movements').insert(
+      const { data: newMvs } = await supabase.from('wl_part_movements').insert(
         part_movements.map(({ id: _mid, ...m }) => ({ ...m, part_id: np!.id }))
-      )
+      ).select('id, sort_order')
+      // point the copy's tiebreak at its own copy of the movement
+      const src = part_movements.find((m) => m.id === tbMv)
+      const dst = src && newMvs?.find((m) => m.sort_order === src.sort_order)
+      if (dst) await supabase.from('wl_workout_parts').update({ tiebreak_movement_id: dst.id }).eq('id', np!.id)
     }
   }
   await audit(supabase, { actor, action: 'workout.duplicate', entity: 'workout', entity_id: copy!.id, after: { from: id } })

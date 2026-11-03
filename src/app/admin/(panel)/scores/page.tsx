@@ -18,7 +18,7 @@ export default async function ScoresPage({ searchParams }: { searchParams: Promi
   const workout = workouts.find((w) => w.id === workoutParam) ?? workouts[0]
 
   const [{ data: parts }, { data: lanes }, { data: divisions }, { data: teams }] = await Promise.all([
-    supabase.from('wl_workout_parts').select('*, part_movements:wl_part_movements(*)').eq('workout_id', workout.id).order('sort_order'),
+    supabase.from('wl_workout_parts').select('*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*)').eq('workout_id', workout.id).order('sort_order'),
     supabase.from('wl_lane_assignments')
       .select('lane, team_id, heat:wl_heats!inner(number, workout_id), judge:wl_judges(name)')
       .eq('heat.workout_id', workout.id),

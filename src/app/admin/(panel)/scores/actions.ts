@@ -44,7 +44,7 @@ export async function saveAdminScore(args: {
   if (!args.reason.trim()) return { error: args.source === 'paper' ? 'Say where the score came from, e.g. “Paper sheet, lane 3”.' : 'Give a reason for the change.' }
 
   const [{ data: part }, { data: team }, { data: existing }] = await Promise.all([
-    supabase.from('wl_workout_parts').select('*, part_movements:wl_part_movements(*)').eq('id', args.partId).single(),
+    supabase.from('wl_workout_parts').select('*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*)').eq('id', args.partId).single(),
     supabase.from('wl_teams').select('id, name, division:wl_divisions(sex, level)').eq('id', args.teamId).single(),
     supabase.from('wl_scores').select('*').eq('part_id', args.partId).eq('team_id', args.teamId).maybeSingle(),
   ])
