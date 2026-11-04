@@ -33,7 +33,16 @@ export interface Lane {
 }
 export interface OpenEventTeam { id: string; name: string; division: string; level: string; status: ServerScore['status'] | null }
 export interface OpenEvent { workout: { id: string; number: number; name: string }; teams: OpenEventTeam[] }
-export interface Assignments { judge: { id: string; name: string; role: 'head' | 'lane' }; lanes: Lane[]; open_events?: OpenEvent[] }
+export interface HeatLane { lane_assignment_id: string; lane: number; team_name: string; division: string; judge_id: string | null; judge_name: string | null; started: boolean; done: boolean }
+export interface JudgeHeat { id: string; workout_id: string; number: number; start_time: string | null; lanes: HeatLane[] }
+export interface JudgeWorkout { id: string; number: number; name: string; description: string | null; status: string; open_entry: boolean; parts: JudgePart[] }
+export interface Assignments {
+  judge: { id: string; name: string; role: 'head' | 'lane' }
+  lanes: Lane[] // the judge's own lanes in full (head judges: every lane)
+  heats?: JudgeHeat[] // every heat, with who's on each lane
+  workouts?: JudgeWorkout[]
+  open_events?: OpenEvent[]
+}
 
 // ── Safe localStorage ──────────────────────────────────────────────────────────
 function read<T>(key: string, fallback: T): T {
@@ -67,6 +76,15 @@ export async function login(judgeId: string, code: string): Promise<{ ok: true }
   return { ok: true }
 }
 
+/** Lane judges: name + the judge code. The same name again signs back in as the same judge. */
+export async function register(name: string, code: string): Promise<{ ok: true } | { error: string }> {
+  const { data, error } = await db().rpc('wl_judge_register', { p_name: name, p_code: code })
+  if (error) return { error: 'offline' }
+  if (data?.error) return { error: data.error }
+  write(TOKEN, data.token)
+  return { ok: true }
+}
+
 export async function logout() {
   const token = getToken()
   remove(TOKEN)
@@ -91,6 +109,16 @@ export async function openSideLane(workoutId: string, teamId: string): Promise<{
   const { data, error } = await db().rpc('wl_judge_open_lane', { p_token: token, p_workout: workoutId, p_team: teamId })
   if (error) return { error: 'offline' }
   if (data?.error) return { error: data.error }
+  return { laneId: data.lane_assignment_id }
+}
+
+/** Take a lane to judge (needs signal). If someone else has it you get their name; `force` takes it over. */
+export async function claimLane(laneId: string, force = false): Promise<{ laneId: string } | { error: string; judgeName?: string }> {
+  const token = getToken()
+  if (!token) return { error: 'signed_out' }
+  const { data, error } = await db().rpc('wl_judge_claim_lane', { p_token: token, p_lane: laneId, p_force: force })
+  if (error) return { error: 'offline' }
+  if (data?.error) return { error: data.error, judgeName: data.judge_name ?? undefined }
   return { laneId: data.lane_assignment_id }
 }
 

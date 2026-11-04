@@ -17,6 +17,9 @@ export async function saveSettings(_prev: { ok?: boolean; error?: string }, form
   }
   const code = String(formData.get('judge_code') ?? '').trim()
   if (!/^\d{4}$/.test(code)) return { error: 'The judge code must be 4 digits.' }
+  const headCode = String(formData.get('head_judge_code') ?? '').trim()
+  if (!/^\d{4}$/.test(headCode)) return { error: 'The head judge code must be 4 digits.' }
+  if (headCode === code) return { error: 'The head judge code must be different from the judge code.' }
   const lanes = Number(formData.get('lanes_per_heat'))
   if (!Number.isInteger(lanes) || lanes < 1 || lanes > 30) return { error: 'Lanes per heat must be between 1 and 30.' }
 
@@ -28,6 +31,7 @@ export async function saveSettings(_prev: { ok?: boolean; error?: string }, form
     custom_points: custom,
     lanes_per_heat: lanes,
     judge_code: code,
+    head_judge_code: headCode,
     overall_tiebreak: String(formData.get('overall_tiebreak') ?? '').trim(),
     updated_at: new Date().toISOString(),
   }

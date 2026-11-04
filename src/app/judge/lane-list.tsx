@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { getDraft, type Lane, type OpenEvent } from '@/lib/judge-client'
 
 export function laneStatus(lane: Lane): { label: string; className: string; done: boolean } {
@@ -23,9 +23,11 @@ const SIDE_STATUS: Record<string, [string, string]> = {
   draft: ['In progress', 'warn'], submitted: ['Submitted', 'gold'], verified: ['Verified', 'ok'], appeal: ['Appeal', 'warn'], rejected: ['Rejected', 'warn'],
 }
 
-export function LaneList({ lanes: allLanes, openEvents = [], onOpen, onRefresh, onScoreTeam, sideError, showJudge = false }: {
+export function LaneList({ lanes: allLanes, openEvents = [], onOpen, onRefresh, onScoreTeam, sideError, showJudge = false, title, children }: {
   lanes: Lane[]; openEvents?: OpenEvent[]; onOpen: (id: string) => void; onRefresh: () => void
   onScoreTeam?: (workoutId: string, teamId: string) => Promise<boolean>; sideError?: string; showJudge?: boolean
+  title?: string // heading over the judge's own lanes
+  children?: ReactNode // shown under the lanes (hidden while picking a side-event team)
 }) {
   const [picking, setPicking] = useState<string | null>(null) // workout id
   const [query, setQuery] = useState('')
@@ -100,7 +102,7 @@ export function LaneList({ lanes: allLanes, openEvents = [], onOpen, onRefresh, 
   if (picking) return <>{side}</>
 
   if (lanes.length === 0) {
-    if (side) return <>{side}</>
+    if (side || children) return <div className="j-screen">{side}{children}</div>
     return (
       <div className="j-empty">
         <h2 className="j-h2">No lanes yet</h2>
@@ -118,7 +120,7 @@ export function LaneList({ lanes: allLanes, openEvents = [], onOpen, onRefresh, 
       {side}
       {workouts.map((w) => (
         <section key={w.id} className="j-section">
-          <h2 className="j-h2">Event {w.number} · {w.name}</h2>
+          <h2 className="j-h2">{title ? `${title} · ` : ''}Event {w.number} · {w.name}</h2>
           <div className="j-group">
             {lanes.filter((l) => l.workout.id === w.id).map((l) => {
               const st = laneStatus(l)
@@ -138,6 +140,7 @@ export function LaneList({ lanes: allLanes, openEvents = [], onOpen, onRefresh, 
           </div>
         </section>
       ))}
+      {children}
     </div>
   )
 }

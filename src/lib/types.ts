@@ -11,6 +11,7 @@ export interface Settings {
   custom_points: number[]
   lanes_per_heat: number
   judge_code: string
+  head_judge_code: string
   overall_tiebreak: string
 }
 

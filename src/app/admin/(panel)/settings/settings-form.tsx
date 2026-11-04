@@ -99,8 +99,12 @@ export function SettingsForm({ settings, largestDivision }: { settings: Settings
             <span>Judge code for the day (4 digits)</span>
             <input id="s-code" name="judge_code" inputMode="numeric" maxLength={4} className="input mono" defaultValue={settings.judge_code} style={{ fontSize: '1.2rem', letterSpacing: '0.3em' }} />
           </label>
+          <label className="field">
+            <span>Head judge code (4 digits)</span>
+            <input id="s-head-code" name="head_judge_code" inputMode="numeric" maxLength={4} className="input mono" defaultValue={settings.head_judge_code} style={{ fontSize: '1.2rem', letterSpacing: '0.3em' }} />
+          </label>
         </div>
-        <p className="small subtle">Give the code out at the judges’ briefing. Changing it signs every judge out at their next action.</p>
+        <p className="small subtle">Give the judge code out at the judges’ briefing: anyone with it can sign in as a judge by typing their name. Keep the head judge code to your head judges. Changing a code signs out everyone using it at their next action.</p>
       </section>
 
       {state.error && <p className="notice notice-bad">{state.error}</p>}
