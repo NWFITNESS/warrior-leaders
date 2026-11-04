@@ -730,3 +730,17 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .lane-move button { width: 26px; height: 18px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line-2); background: transparent; color: var(--muted); border-radius: 5px; font-size: 0.6rem; line-height: 1; cursor: pointer; }
 .lane-move button:hover:not(:disabled) { color: var(--text); border-color: var(--gold); }
 .lane-move button:disabled { opacity: 0.25; cursor: default; }
+
+/* Admin → Final heats */
+.final-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px; align-items: start; }
+@media (max-width: 1000px) { .final-grid { grid-template-columns: 1fr; } }
+.final-div + .final-div { border-top: 1px solid var(--line-2); padding-top: 14px; }
+.final-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.final-list li { display: flex; gap: 12px; align-items: baseline; padding: 5px 8px; border-radius: 8px; color: var(--subtle); font-size: 0.9rem; }
+.final-list li.in { color: var(--text); background: rgba(201, 167, 10, 0.08); }
+.final-list li.in .r { color: var(--gold-hi); }
+.final-list .r { width: 22px; text-align: right; }
+.final-list .t { flex: 1; min-width: 0; }
+.final-list .p { font-size: 0.8rem; }
+.final-order { gap: 12px; align-items: center; }
+.final-heat { display: grid; gap: 6px; }
