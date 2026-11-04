@@ -19,11 +19,11 @@ async function recipients(audience: string): Promise<Recipient[]> {
   if (audience.startsWith('team:')) q = q.eq('id', audience.slice(5))
   const [{ data: teams }, { data: lanes }] = await Promise.all([
     q,
-    supabase.from('wl_lane_assignments').select('lane, team_id, heat:wl_heats(number, start_time, workout:wl_workouts(number, name))'),
+    supabase.from('wl_lane_assignments').select('lane, team_id, heat:wl_heats(number, start_time, workout:wl_workouts(number, name, open_entry))'),
   ])
-  type Lane = { lane: number; team_id: string; heat: { number: number; start_time: string | null; workout: { number: number; name: string } } }
+  type Lane = { lane: number; team_id: string; heat: { number: number; start_time: string | null; workout: { number: number; name: string; open_entry: boolean } } }
   const heatsFor = (teamId: string) => ((lanes ?? []) as unknown as Lane[])
-    .filter((l) => l.team_id === teamId)
+    .filter((l) => l.team_id === teamId && !l.heat.workout.open_entry) // side events have no real heat
     .sort((a, b) => a.heat.workout.number - b.heat.workout.number)
     .map((l) => `Event ${l.heat.workout.number} (${l.heat.workout.name}): ${l.heat.start_time ? l.heat.start_time.slice(0, 5) : 'time TBC'} · Heat ${l.heat.number} · Lane ${l.lane}`)
 

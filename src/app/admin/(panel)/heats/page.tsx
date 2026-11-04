@@ -59,6 +59,7 @@ export default async function HeatsPage({ searchParams }: { searchParams: Promis
           <span className="eyebrow">Floor</span>
           <h1>Heats &amp; lanes</h1>
         </div>
+        <Link href="/admin/final" className="btn btn-ghost btn-sm">Final heats: top teams per division →</Link>
       </div>
       <section className="card stack-sm">
         <div className="spread" style={{ alignItems: 'baseline' }}>
