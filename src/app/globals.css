@@ -623,3 +623,51 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .score-lines em { font-style: normal; font-size: 0.76rem; color: var(--warn); }
 .lb-detail li .bd { grid-column: 1 / -1; margin-top: -2px; }
 .cap-note { display: block; font-family: var(--f-body); font-size: 0.72rem; color: var(--warn); margin-top: 2px; }
+
+/* ── Live screen on phones / portrait tablets: scroll, stack, readable sizes ── */
+@media (max-width: 800px) {
+  .live { height: auto; min-height: 100vh; overflow: visible; padding: 14px 14px 28px; gap: 14px; grid-template-rows: auto auto auto; }
+  .live-head { gap: 12px; flex-wrap: wrap; }
+  .live-head img { width: 120px !important; }
+  .live-title { gap: 2px; }
+  .live-title .eyebrow { font-size: 0.78rem; }
+  .live-title h1 { font-size: 1.5rem; }
+  .live-split .live-body, .live-body { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .live-race, .live-heats { padding: 14px; gap: 12px; overflow: visible; }
+  .live-race-top .eyebrow, .live-heats .eyebrow { font-size: 0.78rem; }
+  .live-race-top .subtle { font-size: 0.85rem !important; }
+  .live-clock { font-size: 2.6rem; }
+  .live-clock small { font-size: 1rem; margin-left: 4px; }
+  .live-lanes { gap: 12px; }
+  /* lane row: [lane] [team] [place / result] on top, the track full width underneath */
+  .lr { grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: 'lane team res' 'track track track'; gap: 6px 10px; }
+  .lr-lane { grid-area: lane; font-size: 1.5rem; }
+  .lr-team { grid-area: team; }
+  .lr-team b { font-size: 1rem; }
+  .lr-team small { font-size: 0.7rem; }
+  .lr-res { grid-area: res; }
+  .lr-res i { font-size: 0.7rem; }
+  .lr-res b { font-size: 1rem; }
+  .lr-track { grid-area: track; height: 26px; }
+  .lr-fill em { font-size: 0.75rem; padding: 0 10px; }
+  .live-heats ol { gap: 8px; overflow: visible; }
+  .live-heats li { grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; padding: 10px 12px; }
+  .live-heats .t { font-size: 1rem; }
+  .live-heats .w b { font-size: 0.92rem; }
+  .live-heats .w small, .live-heats .lanes, .live-heats .live-feature .lanes { font-size: 0.78rem; }
+  .live-heats .lanes { gap: 3px 10px; margin-top: 6px; }
+  .live-heats .lanes i { margin-right: 4px; }
+  .live-heats .s { font-size: 0.7rem; }
+  .live-heats .s small { font-size: 0.66rem; }
+  .live-feature { padding: 12px; gap: 6px; }
+  .live-feature .ft { font-size: 1.25rem; }
+  .live-feature .fd { font-size: 0.82rem; }
+  .live-feature .fc { gap: 8px; }
+  .live-feature .fc span { font-size: 0.7rem; }
+  .live-feature .fc b { font-size: 1.8rem; }
+  .live-feature .spread .mono { font-size: 0.8rem !important; }
+  .live-feature .fbar { height: 5px; }
+  .live-heats .spread .mono { font-size: 0.85rem !important; }
+  .live-race .empty, .live-heats .empty { font-size: 0.95rem; }
+  .live > footer { font-size: 0.72rem !important; flex-direction: column; gap: 4px; align-items: flex-start; }
+}
