@@ -241,7 +241,7 @@ export function Builder({ workout }: { workout: Workout }) {
                         const r = e.target.value as TiebreakRule
                         updatePart(p.id, { tiebreak_rule: r, tiebreak_movement_id: r === 'movement' ? (p.tiebreak_movement_id ?? named.at(-1)?.id ?? null) : null })
                       }}>
-                      {TIEBREAK_RULES.filter((t) => !t.forTimeOnly || p.score_type === 'for_time').map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      {TIEBREAK_RULES.filter((t) => !t.types || t.types.includes(p.score_type)).map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                     {rule === 'movement' && (
                       <select className="input" aria-label="Tiebreak movement" value={p.tiebreak_movement_id ?? ''} onChange={(e) => updatePart(p.id, { tiebreak_movement_id: e.target.value || null })}>
@@ -258,7 +258,7 @@ export function Builder({ workout }: { workout: Workout }) {
               })()}
               <span className="hint">
                 {tiebreakRule(p) === 'fastest_round' && 'Worked out automatically from the judge’s round times: the team’s quickest round. Lower wins.'}
-                {tiebreakRule(p) === 'movement' && `Worked out automatically from when the judge ticks that movement${p.rounds > 1 ? ' in round 1' : ''}. Lower wins.`}
+                {tiebreakRule(p) === 'movement' && (p.score_type === 'max_reps' ? 'Worked out automatically from when the judge’s counter finishes that movement. Lower wins.' : `Worked out automatically from when the judge ticks that movement${p.rounds > 1 ? ' in round 1' : ''}. Lower wins.`)}
                 {tiebreakRule(p) === 'manual' && 'Judges type it in on their phone.'}
                 {tiebreakRule(p) === 'none' && 'Equal scores share the place.'}
               </span>

@@ -17,7 +17,11 @@ export interface RoundEntry {
 
 export interface ForTimeEntries { kind: 'for_time'; rounds: RoundEntry[] }
 export interface AmrapEntries { kind: 'amrap'; rounds: number | null; reps: number | null }
-export interface RepsEntries { kind: 'max_reps'; reps: number | null }
+export interface RepsEntries {
+  kind: 'max_reps'; reps: number | null
+  started_at?: number | null // epoch ms the clock started (first +rep)
+  marks?: { movement_id: string; at: number }[] // chipper: seconds into the workout each movement was finished
+}
 export interface LoadEntries { kind: 'max_load'; lifts: Record<string, Record<string, number | null>> } // owner (athlete id or 'pair') → movement id → kg
 export interface OtherEntries { kind: 'other'; value: number | null }
 export type Entries = ForTimeEntries | AmrapEntries | RepsEntries | LoadEntries | OtherEntries
@@ -162,6 +166,27 @@ export function chipperPosition(part: Pick<WorkoutPart, 'part_movements'>, sex: 
   return last ? { movement: last, done: total - (start - repsFor(last, sex)), need: null as number | null } : null
 }
 
+/** A chipper tap that also keeps the clock start and the time each movement was finished
+ *  (for "time at end of a movement" tiebreaks). Undoing past a finish removes its time. */
+export function chipperTapEntries(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, e: RepsEntries, dir: 1 | -1, nowMs: number, clockStartMs: number | null = null): RepsEntries {
+  const total = e.reps ?? 0
+  // the clock started with the Start button, or on this first +rep
+  const startedAt = e.started_at ?? clockStartMs ?? (dir > 0 ? nowMs : null)
+  const next = chipperTap(part, sex, total, dir)
+  let marks = [...(e.marks ?? [])]
+  // finish line of each movement with reps, in order
+  let end = 0
+  for (const m of part.part_movements) {
+    const need = repsFor(m, sex)
+    if (!need) break
+    end += need
+    const has = marks.some((x) => x.movement_id === m.id)
+    if (next >= end && !has && total < end && startedAt != null) marks.push({ movement_id: m.id!, at: Math.round(((nowMs - startedAt) / 1000) * 10) / 10 })
+    if (next < end && has) marks = marks.filter((x) => x.movement_id !== m.id)
+  }
+  return { kind: 'max_reps', reps: next, started_at: startedAt, marks }
+}
+
 /** One tap on a chipper: +step on the current movement (never past its target), −step back. */
 export function chipperTap(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, total: number, dir: 1 | -1) {
   if (dir > 0) {
@@ -206,6 +231,12 @@ export function amrapTap(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, ro
  *  movement: when the chosen movement was ticked in round 1. Pass the team's version of the part (resolvePart). */
 export function autoTiebreak(part: WorkoutPart, sex: Sex, entries: Entries): { value: number | null; label: string } | null {
   const rule = tiebreakRule(part)
+  // max reps chipper: time the chosen movement was finished (recorded by the judge's counter)
+  if (entries.kind === 'max_reps' && rule === 'movement') {
+    const mv = part.part_movements.find((m) => m.id === part.tiebreak_movement_id)
+    const mark = mv ? entries.marks?.find((x) => x.movement_id === mv.id) : undefined
+    return { value: mark ? mark.at : null, label: mv ? `end of ${mv.name}` : 'movement not set' }
+  }
   if (entries.kind !== 'for_time' || (rule !== 'fastest_round' && rule !== 'movement')) return null
   if (rule === 'fastest_round') {
     const times = entries.rounds.map((r) => roundValue(part, sex, r).value).filter((v): v is number => v != null)

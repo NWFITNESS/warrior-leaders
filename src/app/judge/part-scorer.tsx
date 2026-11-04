@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDraft, putDraft, queue, type Draft, type JudgeEvent, type JudgePart, type Lane } from '@/lib/judge-client'
 import {
-  amrapPosition, amrapTap, autoTiebreak, chipperPosition, chipperTap, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
+  amrapPosition, amrapTap, autoTiebreak, chipperPosition, chipperTapEntries, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
 } from '@/lib/scoring'
 import { loadForSex, parseCap, partTitle, resolvePart, tiebreakRule } from '@/lib/types'
@@ -42,7 +42,8 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
 
   const rule = tiebreakRule(part)
   // AMRAP / max reps / max load countdown: a +rep tap starts it if the judge hasn't
-  const [clockStart, setClockStart] = useState<number | null>(null)
+  // (a chipper keeps its start in the score, so a reload doesn't lose the clock)
+  const [clockStart, setClockStart] = useState<number | null>(() => (draft.entries.kind === 'max_reps' ? draft.entries.started_at ?? null : null))
   const startClock = (dir: 1 | -1) => { if (dir > 0 && clockStart == null && part.time_cap_seconds != null) setClockStart(Date.now()) }
   const auto = autoTiebreak(part, sex, draft.entries)
 
@@ -111,7 +112,7 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
               const pos = chipper ? chipperPosition(part, sex, total) : null
               return pos ? (
                 <TapPad what={`Total ${total} · ${pos.movement.name}`} count={pos.done} need={pos.need ?? undefined} step={tapStep(pos.movement)}
-                  onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'max_reps' ? { entries: { kind: 'max_reps', reps: chipperTap(part, sex, e.reps ?? 0, dir) } } : null) }} />
+                  onTap={(dir) => { const now = Date.now(); if (dir > 0 && clockStart == null) setClockStart((draft.entries.kind === 'max_reps' && draft.entries.started_at) || now); tapEntries((e) => e.kind === 'max_reps' ? { entries: chipperTapEntries(part, sex, e, dir, now, clockStart) } : null) }} />
               ) : (
                 <TapPad what="Total reps" count={total} step={tapStep(part.part_movements[0])}
                   onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'max_reps' ? { entries: { kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null) }} />
