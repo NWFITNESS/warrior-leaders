@@ -744,3 +744,46 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .final-list .p { font-size: 0.8rem; }
 .final-order { gap: 12px; align-items: center; }
 .final-heat { display: grid; gap: 6px; }
+
+/* Admin → Heat times sheet: one-page summary (dark on screen, ink-friendly when printed) */
+.hsheet { --hs-bg: #0b0b0b; --hs-card: #151515; --hs-line: #262626; --hs-text: #f4f4f4; --hs-2: #a3a3a3; --hs-gold: #c9a70a; --hs-blue: #7fb0ff;
+  min-height: 100vh; background: #050505; padding: 20px 16px 40px; display: grid; justify-items: center; gap: 14px; }
+.hs-tools { width: 100%; max-width: 1123px; display: flex; justify-content: space-between; align-items: center; }
+.hs-page { width: 100%; max-width: 1123px; background: var(--hs-bg); color: var(--hs-text); border-radius: 16px; padding: 36px 40px 28px; display: grid; gap: 26px; }
+.hs-head { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; padding-bottom: 22px; border-bottom: 2px solid var(--hs-gold); }
+.hs-title { text-align: right; }
+.hs-title h1 { font-size: 2.6rem; font-weight: 800; line-height: 1; text-transform: uppercase; letter-spacing: 0.02em; }
+.hs-title p { color: var(--hs-gold); font-weight: 600; margin-top: 6px; }
+.hs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; align-items: start; }
+.hs-ev { background: var(--hs-card); border-radius: 14px; padding: 16px; display: grid; gap: 14px; border-top: 4px solid var(--hs-gold); }
+.hs-ev.side { border-top-color: var(--hs-blue); }
+.hs-ev-head { display: flex; gap: 12px; align-items: flex-start; }
+.hs-n { flex: none; width: 40px; height: 40px; border-radius: 10px; background: var(--hs-gold); color: #0a0a0a; display: grid; place-items: center; font-weight: 800; font-size: 1.35rem; }
+.hs-ev.side .hs-n { background: var(--hs-blue); }
+.hs-ev-head h2 { font-size: 1.15rem; font-weight: 700; line-height: 1.15; }
+.hs-ev-head p { font-size: 0.8rem; color: var(--hs-2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.hs-heats { list-style: none; margin: 0; padding: 0; display: grid; }
+.hs-heats li { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; padding: 8px 0; border-top: 1px solid var(--hs-line); }
+.hs-heats li:first-child { border-top: 0; padding-top: 0; }
+.hs-heats .t { grid-row: span 2; font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; color: var(--hs-gold); min-width: 70px; }
+.hs-heats .h { font-size: 0.86rem; font-weight: 600; }
+.hs-heats .d { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.hs-heats i { font-style: normal; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em; padding: 1px 6px; border-radius: 4px; }
+.hs-heats i.rx { background: rgba(201, 167, 10, 0.16); color: var(--hs-gold); }
+.hs-heats i.sc { background: rgba(127, 176, 255, 0.16); color: var(--hs-blue); }
+.hs-note { display: grid; gap: 4px; font-size: 0.86rem; color: var(--hs-2); line-height: 1.4; }
+.hs-note b { color: var(--hs-text); font-size: 1.25rem; font-weight: 700; }
+.hs-foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 0.82rem; color: var(--hs-2); padding-top: 16px; border-top: 1px solid var(--hs-line); }
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  .hsheet { --hs-bg: #fff; --hs-card: #fff; --hs-line: #ddd; --hs-text: #111; --hs-2: #555; --hs-gold: #8a6d04; --hs-blue: #2f6fd6; background: #fff; padding: 0; }
+  .hs-tools { display: none; }
+  .hs-page { max-width: none; border-radius: 0; padding: 0; gap: 16px; }
+  .hs-head { padding-bottom: 12px; }
+  .hs-head img { filter: invert(1) hue-rotate(180deg) brightness(0.9); }
+  .hs-ev { border: 1px solid #ddd; border-top-width: 4px; border-top-color: var(--hs-gold); break-inside: avoid; }
+  .hs-ev.side { border-top-color: var(--hs-blue); }
+  .hs-n { color: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .hs-heats i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

@@ -59,7 +59,10 @@ export default async function HeatsPage({ searchParams }: { searchParams: Promis
           <span className="eyebrow">Floor</span>
           <h1>Heats &amp; lanes</h1>
         </div>
-        <Link href="/admin/final" className="btn btn-ghost btn-sm">Final heats: top teams per division →</Link>
+        <div className="row" style={{ gap: 8 }}>
+          <Link href="/admin/heat-sheet" className="btn btn-ghost btn-sm">Heat times sheet</Link>
+          <Link href="/admin/final" className="btn btn-ghost btn-sm">Final heats: top teams per division →</Link>
+        </div>
       </div>
       <section className="card stack-sm">
         <div className="spread" style={{ alignItems: 'baseline' }}>
