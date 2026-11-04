@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { PublicNav } from '@/components/PublicNav'
-import { getBoardData } from '@/lib/public-data'
+import { getBoardData, revealTime } from '@/lib/public-data'
 import { describeMovement, partTitle, scoringSummary } from '@/lib/types'
 
 export const revalidate = 60
@@ -15,7 +15,7 @@ export default async function WorkoutsPage() {
       <PublicNav current="/workouts" />
       <header className="stack-sm"><span className="eyebrow">Warrior Leaders</span><h1>Workouts</h1>
         <p className="muted small">Tap an event for the full breakdown, standards and results for each division.</p></header>
-      {workouts.length === 0 && <div className="empty">Workouts will be announced soon.</div>}
+      {workouts.length === 0 && !board?.upcoming?.length && <div className="empty">Workouts will be announced soon.</div>}
       <div className="ev-cards">
         {workouts.map((w) => {
           const parts = [...w.parts].sort((a, b) => a.sort_order - b.sort_order)
@@ -33,6 +33,13 @@ export default async function WorkoutsPage() {
             </Link>
           )
         })}
+        {(board?.upcoming ?? []).map((u) => (
+          <div key={`u${u.number}`} className="ev-card locked">
+            <span className="ev-no">Event {u.number}</span>
+            <b>To be revealed</b>
+            <span className="ev-line">Live at {revealTime(u.public_from)}</span>
+          </div>
+        ))}
       </div>
     </main>
   )

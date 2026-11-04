@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { PublicNav } from '@/components/PublicNav'
 import { Standards } from '@/components/Standards'
 import { WorkoutBreakdown } from '@/components/WorkoutBreakdown'
-import { eventResults, getBoardData } from '@/lib/public-data'
+import { eventResults, getBoardData, revealTime } from '@/lib/public-data'
 import { EventResults } from './event-results'
 
 export const revalidate = 30
@@ -17,6 +17,20 @@ export default async function EventPage({ params }: { params: Promise<{ number: 
   const { number } = await params
   const board = await getBoardData()
   const workout = board?.workouts.find((w) => String(w.number) === number)
+  const upcoming = board?.upcoming?.find((u) => String(u.number) === number)
+  if (board && !workout && upcoming) {
+    return (
+      <main className="public">
+        <PublicNav current="/workouts" />
+        <header className="stack-sm">
+          <Link href="/workouts" className="small">← All workouts</Link>
+          <span className="eyebrow">Event {upcoming.number}</span>
+          <h1>To be revealed</h1>
+        </header>
+        <div className="empty">Event {upcoming.number} goes live at <b>{revealTime(upcoming.public_from)}</b>. Check back then for the workout, standards and results.</div>
+      </main>
+    )
+  }
   if (!board || !workout) notFound()
   const results = eventResults(board, workout.id)
   const others = board.workouts.filter((w) => w.id !== workout.id)

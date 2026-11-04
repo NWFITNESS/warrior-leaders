@@ -671,3 +671,7 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
   .live-race .empty, .live-heats .empty { font-size: 0.95rem; }
   .live > footer { font-size: 0.72rem !important; flex-direction: column; gap: 4px; align-items: flex-start; }
 }
+
+.ev-card.locked { border-style: dashed; background: transparent; }
+.ev-card.locked b { color: var(--muted); }
+.ev-card.locked .ev-line { color: var(--gold-hi); font-weight: 600; }

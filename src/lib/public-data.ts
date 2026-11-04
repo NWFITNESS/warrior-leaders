@@ -42,7 +42,11 @@ export interface PublicBoard {
   workouts: (RankWorkout & { description?: string | null; open_entry?: boolean })[]
   releases: Release[]
   scores: RankScore[]
+  upcoming?: { number: number; public_from: string }[] // announced, not revealed yet
 }
+
+/** "Sat 7 Nov, 09:00" in UK time. */
+export const revealTime = (iso: string) => new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 /** How a team's score in one event breaks down (rounds, capped rounds). Single-part events only. */
 function breakdownFor(board: PublicBoard, event: RankEvent, teamId: string, d: PublicBoard['divisions'][number]) {
