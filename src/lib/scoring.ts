@@ -148,6 +148,32 @@ export function forTimeTap(part: WorkoutPart, sex: Sex, entries: ForTimeEntries,
   return { entries: { kind: 'for_time' as const, rounds: entries.rounds.map((x, i) => (i === ri ? r : x)) }, tick, started, round: ri + 1 }
 }
 
+/** Max reps worked through in order (a chipper, e.g. 3 rounds then max handstand walk):
+ *  which movement a running total is on. A movement with no reps set is open-ended (max effort). */
+export function chipperPosition(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, total: number) {
+  let start = 0
+  for (const m of part.part_movements) {
+    const need = repsFor(m, sex)
+    if (!need) return { movement: m, done: total - start, need: null as number | null }
+    if (total < start + need) return { movement: m, done: total - start, need: need as number | null }
+    start += need
+  }
+  const last = part.part_movements.at(-1)
+  return last ? { movement: last, done: total - (start - repsFor(last, sex)), need: null as number | null } : null
+}
+
+/** One tap on a chipper: +step on the current movement (never past its target), −step back. */
+export function chipperTap(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, total: number, dir: 1 | -1) {
+  if (dir > 0) {
+    const pos = chipperPosition(part, sex, total)
+    const step = tapStep(pos?.movement)
+    return total + (pos?.need != null ? Math.min(step, pos.need - pos.done) : step)
+  }
+  if (total <= 0) return 0
+  const prev = chipperPosition(part, sex, total - 1)
+  return Math.max(0, total - Math.min(tapStep(prev?.movement), (prev?.done ?? 0) + 1))
+}
+
 /** Where a team is inside an AMRAP round: which movement, and reps done / needed on it. */
 export function amrapPosition(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, repsIntoRound: number) {
   let start = 0

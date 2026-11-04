@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDraft, putDraft, queue, type Draft, type JudgeEvent, type JudgePart, type Lane } from '@/lib/judge-client'
 import {
-  amrapPosition, amrapTap, autoTiebreak, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
+  amrapPosition, amrapTap, autoTiebreak, chipperPosition, chipperTap, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
 } from '@/lib/scoring'
 import { loadForSex, parseCap, partTitle, resolvePart, tiebreakRule } from '@/lib/types'
@@ -104,8 +104,19 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
           <>
             <MovementList part={part} sex={sex} loadFor={loadFor} />
             <CapClock part={part} start={clockStart} setStart={setClockStart} />
-            <TapPad what="Total reps" count={draft.entries.reps ?? 0} step={tapStep(part.part_movements[0])}
-              onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'max_reps' ? { entries: { kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null) }} />
+            {(() => {
+              // several movements in order (e.g. 3 rounds then max handstand walk): follow where the team is
+              const total = draft.entries.reps ?? 0
+              const chipper = part.part_movements.length > 1 && part.part_movements.some((m) => repsFor(m, sex) > 0)
+              const pos = chipper ? chipperPosition(part, sex, total) : null
+              return pos ? (
+                <TapPad what={`Total ${total} · ${pos.movement.name}`} count={pos.done} need={pos.need ?? undefined} step={tapStep(pos.movement)}
+                  onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'max_reps' ? { entries: { kind: 'max_reps', reps: chipperTap(part, sex, e.reps ?? 0, dir) } } : null) }} />
+              ) : (
+                <TapPad what="Total reps" count={total} step={tapStep(part.part_movements[0])}
+                  onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'max_reps' ? { entries: { kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null) }} />
+              )
+            })()}
             <Stepper label="Total reps" value={draft.entries.reps} onChange={(v) => setEntries({ kind: 'max_reps', reps: v }, [ev('input', { reps: v })])} />
           </>
         )}
