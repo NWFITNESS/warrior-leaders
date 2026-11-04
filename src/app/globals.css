@@ -722,3 +722,11 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .judge-invite .qr { width: 168px; flex: none; background: #fff; border-radius: 10px; padding: 6px; }
 .judge-invite .qr svg { display: block; width: 100%; height: auto; }
 .judge-invite code { font-size: 0.9rem; background: var(--surface-2, rgba(255,255,255,0.06)); padding: 6px 10px; border-radius: 8px; }
+
+/* Admin → Heats: move a team up/down a lane */
+.lane-move { display: inline-flex; align-items: center; gap: 10px; }
+.lane-move b { min-width: 16px; }
+.lane-move > span { display: grid; gap: 2px; }
+.lane-move button { width: 26px; height: 18px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line-2); background: transparent; color: var(--muted); border-radius: 5px; font-size: 0.6rem; line-height: 1; cursor: pointer; }
+.lane-move button:hover:not(:disabled) { color: var(--text); border-color: var(--gold); }
+.lane-move button:disabled { opacity: 0.25; cursor: default; }

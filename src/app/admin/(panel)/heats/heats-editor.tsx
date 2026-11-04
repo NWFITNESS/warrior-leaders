@@ -119,6 +119,23 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
     })
   }
 
+  /** Arrow buttons: swap a team with the lane above/below. Past the top or bottom lane it swaps into the
+   *  previous / next heat. Judges stay with their lanes. */
+  function moveTeam(hi: number, li: number, dir: -1 | 1) {
+    const slots: [number, number][] = []
+    heats.forEach((h, a) => h.lanes.forEach((_, b) => slots.push([a, b])))
+    const at = slots.findIndex(([a, b]) => a === hi && b === li)
+    const to = slots[at + dir]
+    if (at < 0 || !to) return
+    touch()
+    setHeats((hs) => {
+      const next = hs.map((h) => ({ ...h, lanes: h.lanes.map((l) => ({ ...l })) }))
+      const x = next[hi].lanes[li], y = next[to[0]].lanes[to[1]]
+      ;[x.team_id, y.team_id] = [y.team_id, x.team_id]
+      return next
+    })
+  }
+
   /** Same teams in the same heats and lanes (and the same lane judges) as another event; times from this workout's plan. */
   const [copyFrom, setCopyFrom] = useState(copySources[0]?.workoutId ?? '')
   function copyLayout() {
@@ -370,13 +387,23 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
             </div>
             <div className="table-wrap">
               <table className="table" style={{ minWidth: 720 }}>
-                <thead><tr><th style={{ width: 60 }}>Lane</th><th>Team</th><th style={{ width: 150 }}>Division</th><th>Judge</th></tr></thead>
+                <thead><tr><th style={{ width: 92 }}>Lane</th><th>Team</th><th style={{ width: 150 }}>Division</th><th>Judge</th></tr></thead>
                 <tbody>
-                  {h.lanes.map((l) => {
+                  {h.lanes.map((l, li) => {
                     const otherHeat = l.team_id ? heats.findIndex((x) => x.id !== h.id && x.lanes.some((y) => y.team_id === l.team_id)) : -1
                     return (
                       <tr key={l.lane}>
-                        <td className="mono">{l.lane}</td>
+                        <td className="mono">
+                          <span className="lane-move">
+                            <b>{l.lane}</b>
+                            <span>
+                              <button type="button" aria-label={`Move lane ${l.lane} team up`} title={li === 0 ? 'Swap with the last lane of the heat before' : 'Swap with the lane above'}
+                                disabled={hi === 0 && li === 0} onClick={() => moveTeam(hi, li, -1)}>▲</button>
+                              <button type="button" aria-label={`Move lane ${l.lane} team down`} title={li === h.lanes.length - 1 ? 'Swap with lane 1 of the next heat' : 'Swap with the lane below'}
+                                disabled={hi === heats.length - 1 && li === h.lanes.length - 1} onClick={() => moveTeam(hi, li, 1)}>▼</button>
+                            </span>
+                          </span>
+                        </td>
                         <td>
                           <select className="input" value={l.team_id ?? ''} aria-label={`Heat ${hi + 1} lane ${l.lane} team`} onChange={(e) => setLane(h.id, l.lane, { team_id: e.target.value || null })}>
                             <option value="">— empty —</option>
