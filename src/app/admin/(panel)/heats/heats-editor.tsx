@@ -9,7 +9,7 @@ interface Judge { id: string; name: string; role: string }
 interface Division { id: string; name: string; level: string; sex: string }
 type Movement = FullMovement & { id: string }
 interface Part { id: string; label: string; name: string; sort_order: number; score_type: 'for_time' | 'amrap' | 'max_reps' | 'max_load' | 'other'; time_cap_seconds: number | null; rounds: number; scored: boolean; part_movements: Movement[] }
-interface Workout { id: string; number: number; name: string; description: string | null; parts: Part[] }
+interface Workout { id: string; number: number; name: string; description: string | null; heat_minutes?: number | null; parts: Part[] }
 
 const uid = () => crypto.randomUUID()
 const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
@@ -54,7 +54,8 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
   const wSecs = workoutSeconds(workout)
   // timing plan
   const [firstStart, setFirstStart] = useState(initial[0]?.start_time ?? '09:00')
-  const [heatLength, setHeatLength] = useState(String(Math.max(1, Math.ceil(wSecs / 60)) || 10))
+  const capMinutes = Math.max(1, Math.ceil(wSecs / 60)) || 10
+  const [heatLength, setHeatLength] = useState(String(workout.heat_minutes ?? capMinutes))
   const [changeover, setChangeover] = useState('5')
   const [levelExtra, setLevelExtra] = useState('2')
   const [cascade, setCascade] = useState(true)
@@ -166,7 +167,7 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
 
   function save() {
     start(async () => {
-      const res = await saveHeats(workoutId, heats.map((h, i) => ({ ...h, number: i + 1 })))
+      const res = await saveHeats(workoutId, heats.map((h, i) => ({ ...h, number: i + 1 })), Number(heatLength) || null)
       if (res.error) setMsg({ error: res.error })
       else { setMsg({ ok: 'Saved' }); setDirty(false) }
     })
@@ -181,7 +182,7 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
       <section className="card stack-sm">
         <div className="spread" style={{ alignItems: 'baseline' }}>
           <h2>Event {workout.number} · {workout.name}</h2>
-          <span className="small muted">Workout time <b className="mono" style={{ color: 'var(--text)' }}>{formatCap(wSecs)}</b></span>
+          <span className="small muted">Time on the floor <b className="mono" style={{ color: 'var(--text)' }}>{len} min</b>{len * 60 !== wSecs && <> (caps add up to {formatCap(wSecs)})</>}</span>
         </div>
         {workout.description && <p className="small muted">{workout.description}</p>}
         <div className="grid-2" style={{ gap: 14 }}>
@@ -239,7 +240,7 @@ export function HeatsEditor({ workoutId, workout, lanesPerHeat, divisions, teams
             <span style={lbl}>Timing</span>
             <div className="grid-2" style={{ gap: 10 }}>
               <label className="field"><span>First heat starts</span><input id="first-start" type="time" className="input mono" value={firstStart} onChange={(e) => setFirstStart(e.target.value)} /></label>
-              <label className="field"><span>Workout time (min)</span><input id="heat-length" inputMode="numeric" className="input mono" value={heatLength} onChange={(e) => setHeatLength(e.target.value.replace(/\D/g, ''))} /></label>
+              <label className="field"><span>Workout time on the floor (min)</span><input id="heat-length" inputMode="numeric" className="input mono" value={heatLength} onChange={(e) => setHeatLength(e.target.value.replace(/\D/g, ''))} /></label>
               <label className="field"><span>Changeover between heats (min)</span><input id="changeover" inputMode="numeric" className="input mono" value={changeover} onChange={(e) => setChangeover(e.target.value.replace(/\D/g, ''))} /></label>
               <label className="field"><span>Extra when switching RX ↔ Scaled (min)</span><input id="level-extra" inputMode="numeric" className="input mono" value={levelExtra} onChange={(e) => setLevelExtra(e.target.value.replace(/\D/g, ''))} /></label>
             </div>

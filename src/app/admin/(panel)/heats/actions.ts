@@ -11,8 +11,10 @@ export interface HeatInput {
   lanes: { lane: number; team_id: string | null; judge_id: string | null }[]
 }
 
-export async function saveHeats(workoutId: string, heats: HeatInput[]): Promise<{ error?: string; ok?: boolean }> {
+export async function saveHeats(workoutId: string, heats: HeatInput[], heatMinutes: number | null = null): Promise<{ error?: string; ok?: boolean }> {
   const { supabase, actor } = await requireStaff()
+  // the time on the floor this layout was planned with (heat times + live screen use it)
+  if (heatMinutes && heatMinutes >= 1 && heatMinutes <= 240) await supabase.from('wl_workouts').update({ heat_minutes: heatMinutes }).eq('id', workoutId)
 
   // A team can only race once per workout.
   const seen = new Map<string, number>()
