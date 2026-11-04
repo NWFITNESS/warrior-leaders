@@ -79,7 +79,12 @@ async function send(batch: { from: string; to: string[]; subject: string; html: 
     headers: { Authorization: `Bearer ${resendKey()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(batch),
   })
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  if (!res.ok) {
+    // admin-only hint so a wrong key can be matched against Resend's list (never the whole key)
+    const k = resendKey()
+    const hint = res.status === 401 ? ` · key in use starts "${k.slice(0, 7)}…", ${k.length} characters${/\s/.test(k) ? ', contains a space' : ''}` : ''
+    throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}${hint}`)
+  }
 }
 
 export async function sendEmail(draft: EmailDraft, mode: 'test' | 'all'): Promise<{ ok?: boolean; sent?: number; error?: string }> {
