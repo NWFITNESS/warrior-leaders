@@ -70,10 +70,13 @@ export async function previewEmail(draft: EmailDraft) {
   return { count: list.length, preview: sample ? { to: sample.email, ...render(draft, sample) } : null }
 }
 
+/** The key as pasted into Vercel, minus stray spaces / quotes / line breaks. */
+const resendKey = () => (process.env.RESEND_API_KEY ?? '').trim().replace(/^['"]+|['"]+$/g, '').trim()
+
 async function send(batch: { from: string; to: string[]; subject: string; html: string; text: string; reply_to: string }[]) {
   const res = await fetch('https://api.resend.com/emails/batch', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${resendKey()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(batch),
   })
   if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}`)
@@ -81,7 +84,7 @@ async function send(batch: { from: string; to: string[]; subject: string; html: 
 
 export async function sendEmail(draft: EmailDraft, mode: 'test' | 'all'): Promise<{ ok?: boolean; sent?: number; error?: string }> {
   const { supabase, actor } = await requireStaff()
-  if (!process.env.RESEND_API_KEY) return { error: 'Email isn’t switched on yet: add RESEND_API_KEY to the Vercel project.' }
+  if (!resendKey()) return { error: 'Email isn’t switched on yet: add RESEND_API_KEY to the Vercel project.' }
   if (!draft.subject.trim() || !draft.body.trim()) return { error: 'Add a subject and a message.' }
   const list = await recipients(draft.audience)
   if (!list.length) return { error: 'No athletes with an email address in that group.' }
