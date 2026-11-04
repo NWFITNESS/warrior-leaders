@@ -100,6 +100,7 @@ export interface Workout {
   description: string | null
   combine_parts: boolean
   open_entry?: boolean // side event: no heats, judges pick any team
+  public_from?: string | null // ISO time: hidden from athletes / public until then (judges see it when Ready)
   status: 'draft' | 'ready' | 'live' | 'complete'
   workout_parts?: WorkoutPart[]
 }

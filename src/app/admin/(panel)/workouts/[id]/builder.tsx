@@ -32,6 +32,9 @@ export function Builder({ workout }: { workout: Workout }) {
   const [description, setDescription] = useState(workout.description ?? '')
   const [combine, setCombine] = useState(workout.combine_parts)
   const [openEntry, setOpenEntry] = useState(!!workout.open_entry)
+  // "Show on the public site from": datetime-local in the admin's own (UK) time
+  const toLocal = (iso: string | null | undefined) => { if (!iso) return ''; const d = new Date(iso); const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}` }
+  const [publicFrom, setPublicFrom] = useState(toLocal(workout.public_from))
   const [status, setStatus] = useState(workout.status)
   const [parts, setParts] = useState<Part[]>(() =>
     [...(workout.workout_parts ?? [])]
@@ -73,6 +76,7 @@ export function Builder({ workout }: { workout: Workout }) {
       description,
       combine_parts: combine,
       open_entry: openEntry,
+      public_from: publicFrom ? new Date(publicFrom).toISOString() : null,
       status,
       parts: parts.map(({ capText, ...p }) => ({ ...p, time_cap_seconds: parseCap(capText) })),
     }
@@ -117,6 +121,18 @@ export function Builder({ workout }: { workout: Workout }) {
               <option value="complete">Complete</option>
             </select>
           </label>
+        </div>
+        <div className="row" style={{ alignItems: 'flex-end' }}>
+          <label className="field" style={{ width: 260 }}>
+            <span>Show on the public site from</span>
+            <input type="datetime-local" className="input" value={publicFrom} onChange={(e) => { touch(); setPublicFrom(e.target.value) }} />
+          </label>
+          {publicFrom && <button type="button" className="linkbtn" style={{ paddingBottom: 10 }} onClick={() => { touch(); setPublicFrom('') }}>Clear</button>}
+          <span className="small subtle" style={{ paddingBottom: 10, maxWidth: '52ch' }}>
+            {publicFrom
+              ? `Judges see it as soon as it’s Ready. Athletes and the public see it from ${new Date(publicFrom).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.`
+              : 'Blank = athletes see it as soon as it’s Ready.'}
+          </span>
         </div>
         <label className="check">
           <input type="checkbox" checked={openEntry} onChange={(e) => { touch(); setOpenEntry(e.target.checked) }} />

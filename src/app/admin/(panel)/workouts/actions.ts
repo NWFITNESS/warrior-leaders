@@ -24,6 +24,7 @@ export interface WorkoutInput {
   description: string | null
   combine_parts: boolean
   open_entry?: boolean
+  public_from?: string | null
   status: Workout['status']
   parts: (WorkoutPart & { id: string })[]
 }
@@ -53,6 +54,7 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
     description: input.description || null,
     combine_parts: input.combine_parts,
     open_entry: !!input.open_entry,
+    public_from: input.public_from || null,
     status: input.status,
     updated_at: new Date().toISOString(),
   }).eq('id', input.id)

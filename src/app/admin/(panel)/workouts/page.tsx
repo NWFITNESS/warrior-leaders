@@ -46,7 +46,7 @@ export default async function WorkoutsPage() {
                     <td className="small">{parts.map((p) => <div key={p.id}>{p.direction === 'asc' ? 'Lowest' : 'Highest'}</div>)}</td>
                     <td className="small mono">{parts.map((p) => <div key={p.id}>{p.rounds > 1 ? `${p.rounds} × ` : ''}{formatCap(p.time_cap_seconds)}</div>)}</td>
                     <td className="small">{w.combine_parts && scored > 1 ? '1 combined placing' : `${scored} placing${scored === 1 ? '' : 's'}`}</td>
-                    <td><span className={`pill ${STATUS[w.status]}`}>{w.status}</span></td>
+                    <td><span className={`pill ${STATUS[w.status]}`}>{w.status}</span>{w.public_from && new Date(w.public_from) > new Date() && <div className="small subtle">Public {new Date(w.public_from).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' })}</div>}{w.open_entry && <div className="small subtle">Side event</div>}</td>
                   </tr>
                 )
               })}
