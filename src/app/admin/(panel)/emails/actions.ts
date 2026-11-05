@@ -18,16 +18,27 @@ async function recipients(audience: string): Promise<Recipient[]> {
   let q = supabase.from('wl_teams').select('id, name, division_id, division:wl_divisions(name), athletes:wl_athletes(first_name, email, is_captain)')
   if (audience.startsWith('division:')) q = q.eq('division_id', audience.slice(9))
   if (audience.startsWith('team:')) q = q.eq('id', audience.slice(5))
-  const [{ data: teams }, { data: lanes }, { data: settings }] = await Promise.all([
+  const [{ data: teams }, { data: lanes }, { data: settings }, { data: workouts }] = await Promise.all([
     q,
-    supabase.from('wl_lane_assignments').select('lane, team_id, heat:wl_heats(number, start_time, workout:wl_workouts(number, name, open_entry))'),
+    supabase.from('wl_lane_assignments').select('lane, team_id, heat:wl_heats(number, start_time, workout_id)'),
     supabase.from('wl_competition_settings').select('competition_name').single(),
+    supabase.from('wl_workouts').select('id, number, name, open_entry, public_from').neq('status', 'draft').order('number'),
   ])
-  type Lane = { lane: number; team_id: string; heat: { number: number; start_time: string | null; workout: { number: number; name: string; open_entry: boolean } } }
-  const heatsFor = (teamId: string) => ((lanes ?? []) as unknown as Lane[])
-    .filter((l) => l.team_id === teamId && !l.heat.workout.open_entry) // side events have no real heat
-    .sort((a, b) => a.heat.workout.number - b.heat.workout.number)
-    .map((l) => `Event ${l.heat.workout.number} (${l.heat.workout.name}): ${l.heat.start_time ? l.heat.start_time.slice(0, 5) : 'time TBC'} · Heat ${l.heat.number} · Lane ${l.lane}`)
+  type Lane = { lane: number; team_id: string; heat: { number: number; start_time: string | null; workout_id: string } }
+  const londonTime = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })
+  const isFinal = (n: number) => n === Math.max(...(workouts ?? []).filter((w) => !w.open_entry).map((w) => w.number))
+
+  /** One line per event: heat + lane where set, otherwise TBA. Events not public yet keep their name hidden. */
+  const heatsFor = (teamId: string) => (workouts ?? []).map((w) => {
+    const hidden = w.public_from && new Date(w.public_from) > new Date()
+    const title = hidden ? `Event ${w.number}` : `Event ${w.number} (${w.name})`
+    const reveal = hidden ? ` · revealed at ${londonTime(w.public_from!)}` : ''
+    if (w.open_entry) return `${title}: side event, no heat · do it any time once it opens${reveal}`
+    const l = ((lanes ?? []) as unknown as Lane[]).find((x) => x.team_id === teamId && x.heat.workout_id === w.id)
+    if (l) return `${title}: ${l.heat.start_time ? l.heat.start_time.slice(0, 5) : 'time TBA'} · Heat ${l.heat.number} · Lane ${l.lane}`
+    if (isFinal(w.number)) return `${title}: the final · heats and times TBA (top teams in each division)${reveal}`
+    return `${title}: time TBA${reveal}`
+  })
 
   const out: Recipient[] = []
   const seen = new Set<string>()
