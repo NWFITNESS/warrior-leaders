@@ -25,6 +25,7 @@ export async function saveSettings(_prev: { ok?: boolean; error?: string }, form
 
   const row = {
     name: String(formData.get('name') ?? '').trim() || 'Warrior Leaders',
+    competition_name: String(formData.get('competition_name') ?? '').trim() || 'Northern Warrior Competitions',
     event_date: String(formData.get('event_date')),
     venue: String(formData.get('venue') ?? '').trim(),
     points_method: method,

@@ -20,7 +20,7 @@ export default async function EmailsPage() {
         <span className="eyebrow">Communication</span>
         <h1>Emails</h1>
         <p className="small muted" style={{ maxWidth: '70ch' }}>
-          Send updates to athletes from noreply@northernwarrior.co.uk (replies go to info@northernwarrior.co.uk). Each email is personalised with the athlete’s name, team and heat times.
+          Send updates to athletes from Northern Warrior Competitions (noreply@northernwarrior.co.uk; replies go to info@northernwarrior.co.uk). Each email is personalised with the athlete’s name, team and heat times.
         </p>
       </div>
       {!process.env.RESEND_API_KEY && (

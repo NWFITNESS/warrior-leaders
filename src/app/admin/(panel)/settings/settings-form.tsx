@@ -36,10 +36,15 @@ export function SettingsForm({ settings, largestDivision }: { settings: Settings
       <section className="card stack">
         <h2>Competition</h2>
         <div className="grid-3">
-          <label className="field"><span>Name</span><input id="s-name" name="name" className="input" defaultValue={settings.name} /></label>
+          <label className="field"><span>Platform name</span><input id="s-name" name="name" className="input" defaultValue={settings.name} /></label>
           <label className="field"><span>Date</span><input id="s-date" name="event_date" type="date" className="input" defaultValue={settings.event_date} /></label>
           <label className="field"><span>Venue</span><input id="s-venue" name="venue" className="input" defaultValue={settings.venue} /></label>
         </div>
+        <label className="field">
+          <span>Competition name (used in emails)</span>
+          <input id="s-comp-name" name="competition_name" className="input" defaultValue={settings.competition_name} />
+        </label>
+        <p className="small subtle">Emails lead with the competition name and the Northern Warrior Competitions logo; Warrior Leaders shows as “Powered by” at the bottom.</p>
       </section>
 
       <section className="card stack">

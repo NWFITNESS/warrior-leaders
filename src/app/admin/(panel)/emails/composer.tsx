@@ -18,37 +18,42 @@ function toBase64(file: File): Promise<string> {
 const TEMPLATES: { name: string; subject: string; body: string }[] = [
   {
     name: 'Heat times',
-    subject: 'Your heat times for Warrior Leaders',
+    subject: 'Your heat times: {competition}',
     body: `Hi {first_name},
 
-Here are the heat times for {team} ({division}):
+Here are the heat times for {team} ({division}) at {competition}:
 
 {heats}
 
-Please arrive at least 30 minutes before your first heat and check in at the desk.
+Saturday's timings:
+08:00 Gym opens
+08:30 Athlete briefing
+09:00 First heat
 
-Follow the live leaderboard on the day at https://leaders.northernwarrior.co.uk
+Please make the 08:30 briefing. We'll go through every movement standard so you know exactly what counts as a rep, which means fewer no-reps on the day. Check in at the desk when you arrive.
+
+Workouts, standards and the live leaderboard: https://leaders.northernwarrior.co.uk
 
 See you on the floor,
-Northern Warrior`,
+Northern Warrior Competitions`,
   },
   {
     name: 'General update',
-    subject: 'Warrior Leaders: update',
+    subject: '{competition}: update',
     body: `Hi {first_name},
 
 `,
   },
   {
     name: 'Final results',
-    subject: 'Warrior Leaders: final results',
+    subject: '{competition}: final results',
     body: `Hi {first_name},
 
-Thank you for competing at Warrior Leaders. The final results are now on the leaderboard: https://leaders.northernwarrior.co.uk
+Thank you for competing at {competition}. The final results are now on the leaderboard: https://leaders.northernwarrior.co.uk
 
 See how {team} got on: {team_link}
 
-Northern Warrior`,
+Northern Warrior Competitions`,
   },
 ]
 
@@ -128,7 +133,7 @@ export function EmailComposer({ divisions, teams, me }: { divisions: { id: strin
           )}
           {files.length > 0 && <span className="small subtle">With attachments, emails go out one at a time (about 2 a second), so a full send takes under a minute. Keep this page open.</span>}
         </div>
-        <p className="small subtle">Personalise with {'{first_name}'}, {'{team}'}, {'{division}'}, {'{heats}'} (their heat times) and {'{team_link}'}.</p>
+        <p className="small subtle">Personalise with {'{competition}'}, {'{first_name}'}, {'{team}'}, {'{division}'}, {'{heats}'} (their heat times) and {'{team_link}'}.</p>
         {msg.error && <p className="notice notice-bad">{msg.error}</p>}
         {msg.ok && <p className="notice notice-ok">{msg.ok}</p>}
         <div className="row">

@@ -12,6 +12,7 @@ export interface Settings {
   lanes_per_heat: number
   judge_code: string
   head_judge_code: string
+  competition_name: string
   overall_tiebreak: string
 }
 

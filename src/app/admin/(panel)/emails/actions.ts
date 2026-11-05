@@ -9,7 +9,7 @@ const FROM = 'Northern Warrior Competitions <noreply@northernwarrior.co.uk>'
 const REPLY_TO = 'info@northernwarrior.co.uk'
 
 export interface EmailDraft { audience: string; subject: string; body: string }
-interface Recipient { email: string; firstName: string; team: string; teamId: string; division: string; heats: string[] }
+interface Recipient { email: string; firstName: string; team: string; teamId: string; division: string; heats: string[]; competition: string }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -18,9 +18,10 @@ async function recipients(audience: string): Promise<Recipient[]> {
   let q = supabase.from('wl_teams').select('id, name, division_id, division:wl_divisions(name), athletes:wl_athletes(first_name, email, is_captain)')
   if (audience.startsWith('division:')) q = q.eq('division_id', audience.slice(9))
   if (audience.startsWith('team:')) q = q.eq('id', audience.slice(5))
-  const [{ data: teams }, { data: lanes }] = await Promise.all([
+  const [{ data: teams }, { data: lanes }, { data: settings }] = await Promise.all([
     q,
     supabase.from('wl_lane_assignments').select('lane, team_id, heat:wl_heats(number, start_time, workout:wl_workouts(number, name, open_entry))'),
+    supabase.from('wl_competition_settings').select('competition_name').single(),
   ])
   type Lane = { lane: number; team_id: string; heat: { number: number; start_time: string | null; workout: { number: number; name: string; open_entry: boolean } } }
   const heatsFor = (teamId: string) => ((lanes ?? []) as unknown as Lane[])
@@ -36,7 +37,7 @@ async function recipients(audience: string): Promise<Recipient[]> {
       const key = a.email.toLowerCase()
       if (seen.has(key)) continue
       seen.add(key)
-      out.push({ email: a.email, firstName: a.first_name, team: t.name, teamId: t.id, division: t.division.name, heats: heatsFor(t.id) })
+      out.push({ email: a.email, firstName: a.first_name, team: t.name, teamId: t.id, division: t.division.name, heats: heatsFor(t.id), competition: settings?.competition_name ?? 'Northern Warrior Competitions' })
     }
   }
   return out
@@ -44,6 +45,7 @@ async function recipients(audience: string): Promise<Recipient[]> {
 
 function fill(text: string, r: Recipient) {
   return text
+    .replaceAll('{competition}', r.competition)
     .replaceAll('{first_name}', r.firstName)
     .replaceAll('{team}', r.team)
     .replaceAll('{division}', r.division)
@@ -57,10 +59,11 @@ function render(draft: EmailDraft, r: Recipient) {
   const html = `<!doctype html><html><body style="margin:0;background:#f4f4f4;font-family:Helvetica,Arial,sans-serif;color:#111">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:10px;overflow:hidden">
-<tr><td style="background:#0a0a0a;padding:22px;text-align:center"><img src="${SITE}/brand/logo-horizontal-email.png" width="300" height="61" alt="Warrior Leaders" style="display:inline-block;width:300px;height:auto"></td></tr>
+<tr><td style="background:#0a0a0a;padding:10px 22px 22px;text-align:center"><img src="${SITE}/nw-competitions-logo-900.png" width="260" alt="Northern Warrior Competitions" style="display:inline-block;width:260px;height:auto"><div style="color:#c9a70a;font-size:15px;font-weight:bold;letter-spacing:0.04em;margin-top:2px">${esc(r.competition)}</div></td></tr>
 <tr><td style="padding:26px 26px 10px;font-size:15px">${paragraphs}</td></tr>
 <tr><td style="padding:0 26px 26px"><a href="${SITE}/teams/${r.teamId}" style="display:inline-block;background:#c9a70a;color:#0a0a0a;text-decoration:none;font-weight:bold;padding:12px 18px;border-radius:8px">View your team page</a></td></tr>
-<tr><td style="padding:16px 26px;background:#fafafa;font-size:12px;color:#777">Warrior Leaders · Northern Warrior Competitions. You’re receiving this because you entered the competition. Reply to this email with any questions.</td></tr>
+<tr><td style="padding:16px 26px;background:#fafafa;font-size:12px;color:#777">You’re receiving this because you entered ${esc(r.competition)}. Reply to this email with any questions.</td></tr>
+<tr><td style="padding:12px 26px;background:#0a0a0a;text-align:center;font-size:11px;color:#9a9a9a">Powered by&nbsp;&nbsp;<img src="${SITE}/brand/logo-horizontal-email.png" width="100" alt="Warrior Leaders" style="display:inline-block;width:100px;height:auto;vertical-align:middle"></td></tr>
 </table></td></tr></table></body></html>`
   return { subject: fill(draft.subject, r), html, text: `${text}\n\nYour team page: ${SITE}/teams/${r.teamId}` }
 }
