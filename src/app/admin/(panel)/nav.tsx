@@ -12,6 +12,7 @@ const GROUPS: { title: string; items: { href: string; label: string }[] }[] = [
     { href: '/admin/heats', label: 'Heats & lanes' },
   ] },
   { title: 'On the day', items: [
+    { href: '/admin/check-in', label: 'Check-in (tablet)' },
     { href: '/admin/scores', label: 'Scores' },
     { href: '/admin/leaderboard', label: 'Leaderboard' },
     { href: '/admin/final', label: 'Final heats' },
