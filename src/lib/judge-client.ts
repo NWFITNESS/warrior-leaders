@@ -59,6 +59,30 @@ const OUTBOX = 'wl-judge-outbox'
 const draftKey = (lane: string, part: string) => `wl-draft:${lane}:${part}`
 
 export const getToken = () => read<string | null>(TOKEN, null)
+
+// ── Phone clock, corrected to the server ───────────────────────────────────────
+// Phones' clocks can be seconds apart; every judge times on server time so lanes line up.
+const OFFSET = 'wl-judge-clock-offset'
+let lastClockSync = 0
+let clockOffset = typeof window === 'undefined' ? 0 : read<number>(OFFSET, 0)
+export const judgeNow = () => Date.now() + clockOffset
+export async function syncClock() {
+  const t0 = Date.now()
+  const { data, error } = await db().rpc('wl_server_now')
+  const t1 = Date.now()
+  if (error || data == null || t1 - t0 > 3000) return // no signal, or too slow a reply to trust
+  clockOffset = Math.round(Number(data) - (t0 + t1) / 2)
+  write(OFFSET, clockOffset)
+}
+
+/** Tell the server this lane started its clock; returns the heat's official start (the first judge's), or null offline. */
+export async function syncHeatStart(laneId: string, partId: string, round: number, startedMs: number): Promise<number | null> {
+  const token = getToken()
+  if (!token) return null
+  const { data, error } = await db().rpc('wl_judge_heat_start', { p_token: token, p_lane: laneId, p_part: partId, p_round: round, p_started_ms: Math.round(startedMs) })
+  if (error || !data?.synced || data.heat_started_ms == null) return null
+  return Number(data.heat_started_ms)
+}
 export const getCachedAssignments = () => read<Assignments | null>(CACHE, null)
 
 // ── Sign-in ────────────────────────────────────────────────────────────────────
@@ -99,6 +123,7 @@ export async function fetchAssignments(): Promise<Assignments | { error: 'signed
   if (error) return { error: 'offline' }
   if (data?.error === 'signed_out') { remove(TOKEN); return { error: 'signed_out' } }
   write(CACHE, data)
+  if (Date.now() - lastClockSync > 60_000) { lastClockSync = Date.now(); void syncClock() } // also right after sign-in
   return data as Assignments
 }
 
@@ -202,5 +227,7 @@ export function startSyncLoop() {
   const tick = () => { if (navigator.onLine) void flush() }
   const id = window.setInterval(tick, 5000)
   window.addEventListener('online', tick)
-  return () => { window.clearInterval(id); window.removeEventListener('online', tick) }
+  const clock = () => { if (navigator.onLine) void syncClock() }
+  const cid = window.setInterval(clock, 60_000)
+  return () => { window.clearInterval(id); window.clearInterval(cid); window.removeEventListener('online', tick) }
 }
