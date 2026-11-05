@@ -848,3 +848,72 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 .ci-ath.in .nm small { color: #4ade80; }
 .ci-foot { display: flex; justify-content: space-between; font-size: 0.85rem; color: #777; margin-top: auto; padding-top: 12px; }
 .ci-foot a { color: #c9a70a; }
+
+/* ── Live screen: TV dressing (header, glow, bottom stage bar, sponsor ticker) ── */
+.live { grid-template-rows: auto 1fr auto; background:
+  radial-gradient(60vw 40vh at 0% 0%, rgba(201, 167, 10, 0.10), transparent 70%),
+  radial-gradient(50vw 40vh at 100% 100%, rgba(201, 167, 10, 0.07), transparent 70%), var(--bg); }
+.live-nw { height: 7.5vh; width: auto; display: block; }
+.live-head { padding-bottom: 1.4vh; border-bottom: 2px solid rgba(201, 167, 10, 0.55); }
+.live-title h1 { font-size: 3vw; }
+.live-dot { display: inline-block; width: 0.75vw; height: 0.75vw; border-radius: 50%; background: #ef4444; margin-right: 0.7vw; vertical-align: 0.05vw; animation: live-pulse 1.4s ease-in-out infinite; }
+@keyframes live-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { box-shadow: 0 0 0 0.6vw rgba(239, 68, 68, 0); } }
+.live-now { display: grid; justify-items: end; gap: 0.3vh; }
+.live-now b { font-size: 3.2vw; line-height: 1; color: #fff; font-weight: 500; }
+.live-now > span { font-size: 0.95vw; color: var(--gold-hi); font-weight: 600; }
+.live-race, .live-heats { background: rgba(20, 20, 20, 0.82); backdrop-filter: blur(6px); }
+.live .lr.lead { box-shadow: 0 0 2.2vw rgba(201, 167, 10, 0.25); }
+
+.live-foot { display: grid; grid-template-columns: 1fr auto; gap: 1.2vw; align-items: end; }
+.live-pb { display: grid; justify-items: end; gap: 0.5vh; font-size: 0.75vw; color: var(--subtle); text-transform: uppercase; letter-spacing: 0.14em; font-weight: 700; padding-bottom: 0.4vh; }
+.live-pb img { width: 7vw !important; }
+.stage-wrap { display: grid; gap: 1vh; min-width: 0; }
+.stage { display: grid; grid-template-columns: 24vw minmax(0, 1fr) auto; gap: 1vw; height: 11vh; }
+.stage > div { background: rgba(20, 20, 20, 0.9); border: 1px solid var(--line); border-radius: 14px; }
+.stage-dj { display: flex; align-items: center; gap: 1.2vw; padding: 0 1.2vw; border-color: rgba(201, 167, 10, 0.5) !important; background: linear-gradient(120deg, rgba(201, 167, 10, 0.16), rgba(20, 20, 20, 0.9) 60%) !important; }
+.stage-dj span { display: block; font-size: 0.8vw; text-transform: uppercase; letter-spacing: 0.16em; color: var(--gold-hi); font-weight: 700; }
+.stage-dj b { font-size: 1.35vw; line-height: 1.15; }
+.eq { display: flex; align-items: flex-end; gap: 0.22vw; height: 6vh; flex: none; }
+.eq i { width: 0.36vw; height: 100%; border-radius: 0.2vw; background: linear-gradient(to top, var(--gold), #f5d84a); transform-origin: bottom; animation: eq-bounce 0.9s ease-in-out infinite alternate; }
+@keyframes eq-bounce { 0% { transform: scaleY(0.15); } 35% { transform: scaleY(0.9); } 60% { transform: scaleY(0.4); } 100% { transform: scaleY(1); } }
+.stage-slide { position: relative; overflow: hidden; display: flex; align-items: center; padding: 0 1.4vw; }
+.stage-slide .slide { display: flex; align-items: center; gap: 1.2vw; animation: slide-in 0.7s cubic-bezier(.2,.8,.2,1); }
+@keyframes slide-in { from { transform: translateY(70%); opacity: 0; } to { transform: none; opacity: 1; } }
+.stage-slide .ic { font-size: 3vw; line-height: 1; }
+.stage-slide b { font-size: 1.5vw; color: var(--gold-hi); display: block; line-height: 1.1; }
+.stage-slide p { font-size: 1.15vw; color: var(--text); line-height: 1.3; margin-top: 0.3vh; }
+.stage-slide .dots { position: absolute; right: 1.2vw; top: 1vh; display: flex; gap: 0.3vw; }
+.stage-slide .dots i { width: 0.4vw; height: 0.4vw; border-radius: 50%; background: rgba(255, 255, 255, 0.18); }
+.stage-slide .dots i.on { background: var(--gold-hi); }
+.stage-slide .prog { position: absolute; left: 0; bottom: 0; height: 0.4vh; min-height: 3px; background: var(--gold-hi); animation: prog linear forwards; }
+@keyframes prog { from { width: 0; } to { width: 100%; } }
+.stage-qr { display: flex; align-items: center; gap: 0.8vw; padding: 0.8vh 1vw 0.8vh 0.8vh; }
+.stage-qr .q { height: 9.2vh; aspect-ratio: 1; background: #fff; border-radius: 8px; padding: 0.4vh; }
+.stage-qr .q svg { width: 100%; height: 100%; display: block; }
+.stage-qr span { font-size: 0.85vw; color: var(--subtle); line-height: 1.25; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; }
+.stage-qr span b { color: var(--gold-hi); font-size: 1vw; }
+.sponsors { display: flex; align-items: center; gap: 1vw; height: 4.2vh; background: var(--gold-hi); color: #0a0a0a; border-radius: 10px; overflow: hidden; }
+.sponsors .lbl { flex: none; height: 100%; display: flex; align-items: center; padding: 0 1.2vw; background: #0a0a0a; color: var(--gold-hi); font-size: 0.85vw; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; border: 2px solid var(--gold-hi); border-radius: 10px 0 0 10px; }
+.sponsors .track { flex: 1; overflow: hidden; mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent); }
+.sponsors .run { display: inline-flex; white-space: nowrap; animation: ticker 40s linear infinite; }
+.sponsors .run span { font-size: 1.35vw; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; padding-right: 1.6vw; }
+.sponsors .run i { font-style: normal; font-size: 0.8vw; margin-left: 1.6vw; opacity: 0.6; vertical-align: 0.2vw; }
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+@media (max-width: 800px) {
+  .live-nw { height: 44px; }
+  .live-now { display: none; }
+  .live-now > span { font-size: 0.7rem; }
+  .live-dot { width: 8px; height: 8px; margin-right: 6px; }
+  .live-foot { grid-template-columns: 1fr; }
+  .live-pb { justify-items: start; font-size: 0.65rem; }
+  .live-pb img { width: 100px !important; }
+  .stage { grid-template-columns: 1fr; height: auto; }
+  .stage-dj, .stage-slide { min-height: 64px; padding: 10px 14px; }
+  .stage-dj b { font-size: 1rem; } .stage-dj span { font-size: 0.65rem; }
+  .eq { height: 36px; gap: 2px; } .eq i { width: 4px; }
+  .stage-slide .ic { font-size: 1.8rem; } .stage-slide b { font-size: 1rem; } .stage-slide p { font-size: 0.85rem; }
+  .stage-slide .dots { display: none; }
+  .stage-qr { display: none !important; }
+  .sponsors { height: 34px; } .sponsors .lbl { font-size: 0.6rem; padding: 0 10px; } .sponsors .run span { font-size: 0.9rem; } .sponsors .run i { font-size: 0.6rem; }
+}

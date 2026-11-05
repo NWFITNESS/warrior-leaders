@@ -1,3 +1,4 @@
+import QRCode from 'qrcode'
 import { LiveScreen } from './live-screen'
 
 export const metadata = { title: 'Live' }
@@ -11,5 +12,7 @@ export const metadata = { title: 'Live' }
 export default async function LivePage({ searchParams }: { searchParams: Promise<{ view?: string; heat?: string; at?: string }> }) {
   const { view, heat, at } = await searchParams
   const mode = view === 'race' || view === 'heats' ? view : 'split'
-  return <LiveScreen mode={mode} heatId={heat ?? null} at={at && /^\d{1,2}:\d{2}$/.test(at) ? at : null} />
+  // scan-for-scores code on the bottom bar (black on white so any phone reads it off a TV)
+  const qr = await QRCode.toString('https://leaders.northernwarrior.co.uk', { type: 'svg', margin: 1, errorCorrectionLevel: 'M' })
+  return <LiveScreen mode={mode} heatId={heat ?? null} at={at && /^\d{1,2}:\d{2}$/.test(at) ? at : null} qr={qr} />
 }

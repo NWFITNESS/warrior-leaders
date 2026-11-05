@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { Logo } from '@/components/Logo'
+import { EVENT_LINE } from '@/lib/live-promo'
+import { StageBar } from './stage-bar'
 import {
   activePart, clockText, countdown, formatTime, heatClock, heatTimeline, hhmm, laneStates, londonSeconds, ordinal, partTitle,
   type LiveData, type LiveHeat, type TimedHeat,
@@ -57,7 +59,7 @@ function useClock(offset: number, at: string | null) {
 const levelOf = (heat: LiveHeat) => [...new Set(heat.lanes.map((l) => l.level))]
 const divisionsOf = (heat: LiveHeat) => [...new Set(heat.lanes.map((l) => l.division))]
 
-export function LiveScreen({ mode, heatId, at }: { mode: 'split' | 'race' | 'heats'; heatId: string | null; at: string | null }) {
+export function LiveScreen({ mode, heatId, at, qr = null }: { mode: 'split' | 'race' | 'heats'; heatId: string | null; at: string | null; qr?: string | null }) {
   // the heat that's on now (or next, or the last one) by the clock: the race shows it when nobody is scoring
   const [fallback, setFallback] = useState<string | null>(null)
   const { data, offline, offset } = useLive(heatId, fallback)
@@ -70,18 +72,22 @@ export function LiveScreen({ mode, heatId, at }: { mode: 'split' | 'race' | 'hea
   return (
     <main className={`live live-${mode}`}>
       <header className="live-head">
-        <Logo width={260} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="live-nw" src="/brand/nw-competitions-tight.png" alt="Northern Warrior Competitions" />
         <div className="live-title">
           {heat ? (
             <>
-              <span className="eyebrow">Event {heat.workout_number} · Heat {heat.number} · {hhmm(heat.start_time)}</span>
+              <span className="eyebrow"><i className="live-dot" />Event {heat.workout_number} · Heat {heat.number} · {hhmm(heat.start_time)}</span>
               <h1>{heat.workout_name}</h1>
             </>
           ) : (
-            <h1>The Warrior <b style={{ color: 'var(--gold-hi)' }}>Leaders</b></h1>
+            <h1>{EVENT_LINE}</h1>
           )}
         </div>
-        {offline && <span className="j-sync bad">Reconnecting…</span>}
+        <div className="live-now">
+          <b className="mono">{clockText(now)}</b>
+          <span>{offline ? <span className="j-sync bad">Reconnecting…</span> : EVENT_LINE}</span>
+        </div>
       </header>
 
       {!data ? (
@@ -93,9 +99,9 @@ export function LiveScreen({ mode, heatId, at }: { mode: 'split' | 'race' | 'hea
         </div>
       )}
 
-      <footer className="spread subtle" style={{ fontSize: '0.9vw' }}>
-        <span>leaders.northernwarrior.co.uk</span>
-        <span>Live from the judges · results are official once released</span>
+      <footer className="live-foot">
+        <StageBar qr={qr} />
+        <span className="live-pb">Powered by <Logo width={110} /></span>
       </footer>
     </main>
   )
