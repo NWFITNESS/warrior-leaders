@@ -7,6 +7,8 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  // email attachments go through a server action (8 MB of files ≈ 11 MB once encoded)
+  experimental: { serverActions: { bodySizeLimit: '12mb' } },
   async headers() {
     return [
       { source: '/(.*)', headers: securityHeaders },

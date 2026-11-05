@@ -1,7 +1,19 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { previewEmail, sendEmail, type EmailDraft } from './actions'
+import { previewEmail, sendEmail, type EmailAttachment, type EmailDraft } from './actions'
+
+const MAX_BYTES = 8 * 1024 * 1024 // all attachments together (matches the server)
+const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`)
+
+function toBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(String(r.result).split(',')[1] ?? '')
+    r.onerror = () => reject(r.error)
+    r.readAsDataURL(file)
+  })
+}
 
 const TEMPLATES: { name: string; subject: string; body: string }[] = [
   {
@@ -46,6 +58,17 @@ export function EmailComposer({ divisions, teams, me }: { divisions: { id: strin
   const [confirm, setConfirm] = useState(false)
   const [msg, setMsg] = useState<{ ok?: string; error?: string }>({})
   const [pending, start] = useTransition()
+  const [files, setFiles] = useState<EmailAttachment[]>([])
+  const total = files.reduce((n, f) => n + f.size, 0)
+
+  async function addFiles(list: FileList | null) {
+    if (!list?.length) return
+    const added: EmailAttachment[] = []
+    for (const f of Array.from(list)) added.push({ filename: f.name, size: f.size, content: await toBase64(f) })
+    const next = [...files, ...added]
+    if (next.reduce((n, f) => n + f.size, 0) > MAX_BYTES) { setMsg({ error: 'Attachments must be under 8 MB in total.' }); return }
+    setFiles(next); setConfirm(false); setMsg({})
+  }
 
   useEffect(() => {
     const id = window.setTimeout(() => { previewEmail(draft).then(setPreview, () => setPreview(null)) }, 400)
@@ -54,9 +77,9 @@ export function EmailComposer({ divisions, teams, me }: { divisions: { id: strin
 
   const set = (patch: Partial<EmailDraft>) => { setDraft((d) => ({ ...d, ...patch })); setConfirm(false); setMsg({}) }
   const doSend = (mode: 'test' | 'all') => start(async () => {
-    const res = await sendEmail(draft, mode)
+    const res = await sendEmail(draft, mode, files)
     setConfirm(false)
-    setMsg(res.error ? { error: res.error } : { ok: mode === 'test' ? `Test sent to ${me}.` : `Sent to ${res.sent} athletes.` })
+    setMsg(res.error ? { error: res.error } : { ok: mode === 'test' ? `Test sent to ${me}.` : `Sent to ${res.sent} athletes${res.failed ? `, ${res.failed} failed (see the log below)` : ''}.` })
   })
 
   return (
@@ -86,6 +109,25 @@ export function EmailComposer({ divisions, teams, me }: { divisions: { id: strin
           <span>Message</span>
           <textarea id="email-body" className="input" rows={14} value={draft.body} onChange={(e) => set({ body: e.target.value })} />
         </label>
+        <div className="field">
+          <span>Attachments</span>
+          <div className="row" style={{ gap: 10 }}>
+            <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+              Attach a file
+              <input type="file" multiple hidden onChange={(e) => { void addFiles(e.target.files); e.target.value = '' }} />
+            </label>
+            <span className="small subtle">{files.length ? `${kb(total)} of 8 MB` : 'PDF, image or document. Up to 8 MB in total.'}</span>
+          </div>
+          {files.length > 0 && (
+            <ul className="attach-list">
+              {files.map((f, i) => (
+                <li key={i}><span>📎 {f.filename}</span><span className="small subtle">{kb(f.size)}</span>
+                  <button type="button" className="linkbtn danger" onClick={() => { setFiles(files.filter((_, j) => j !== i)); setConfirm(false) }}>Remove</button></li>
+              ))}
+            </ul>
+          )}
+          {files.length > 0 && <span className="small subtle">With attachments, emails go out one at a time (about 2 a second), so a full send takes under a minute. Keep this page open.</span>}
+        </div>
         <p className="small subtle">Personalise with {'{first_name}'}, {'{team}'}, {'{division}'}, {'{heats}'} (their heat times) and {'{team_link}'}.</p>
         {msg.error && <p className="notice notice-bad">{msg.error}</p>}
         {msg.ok && <p className="notice notice-ok">{msg.ok}</p>}
@@ -106,6 +148,7 @@ export function EmailComposer({ divisions, teams, me }: { divisions: { id: strin
         {preview?.preview ? (
           <>
             <div className="small"><b>Subject:</b> {preview.preview.subject}</div>
+            {files.length > 0 && <div className="small"><b>Attached:</b> {files.map((f) => f.filename).join(', ')}</div>}
             <iframe title="Email preview" sandbox="" srcDoc={preview.preview.html} style={{ width: '100%', height: 640, border: '1px solid var(--line-2)', borderRadius: 10, background: '#f4f4f4' }} />
           </>
         ) : <div className="empty">No athletes with an email address in that group.</div>}

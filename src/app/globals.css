@@ -787,3 +787,21 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
   .hs-n { color: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .hs-heats i { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Admin → Emails: attachments + sent log */
+.attach-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.attach-list li { display: flex; gap: 12px; align-items: center; padding: 6px 10px; border: 1px solid var(--line-2); border-radius: 8px; font-size: 0.9rem; }
+.attach-list li span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.email-log { padding: 14px 16px; }
+.email-log summary { list-style: none; display: flex; gap: 16px; align-items: center; cursor: pointer; flex-wrap: wrap; }
+.email-log summary::-webkit-details-marker { display: none; }
+.email-log .when { font-size: 0.82rem; color: var(--muted); min-width: 120px; }
+.email-log .subj { flex: 1; min-width: 200px; display: grid; gap: 1px; }
+.email-log .subj small { font-size: 0.8rem; color: var(--subtle); }
+.email-log .nums { display: flex; gap: 10px; font-size: 0.82rem; font-weight: 600; }
+.email-log .nums .ok { color: var(--ok); }
+.email-log .nums .bad { color: var(--bad); }
+.dot-status::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--subtle); margin-right: 6px; vertical-align: middle; }
+.dot-status.ok::before { background: var(--ok); }
+.dot-status.warn::before { background: var(--warn); }
+.dot-status.bad::before { background: var(--bad); }

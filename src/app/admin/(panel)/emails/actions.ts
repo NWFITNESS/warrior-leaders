@@ -1,6 +1,7 @@
 'use server'
 
 import { requireStaff } from '@/lib/auth'
+import { revalidatePath } from 'next/cache'
 import { audit } from '@/lib/audit'
 
 const SITE = 'https://leaders.northernwarrior.co.uk'
@@ -73,39 +74,122 @@ export async function previewEmail(draft: EmailDraft) {
 /** The key as pasted into Vercel, minus stray spaces / quotes / line breaks. */
 const resendKey = () => (process.env.RESEND_API_KEY ?? '').trim().replace(/^['"]+|['"]+$/g, '').trim()
 
-async function send(batch: { from: string; to: string[]; subject: string; html: string; text: string; reply_to: string }[]) {
+export interface EmailAttachment { filename: string; content: string /* base64 */; size: number }
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024 // all files together
+
+type Message = { from: string; to: string[]; subject: string; html: string; text: string; reply_to: string; attachments?: { filename: string; content: string }[] }
+type Outcome = { email: string; name: string; team: string; resend_id: string | null; error: string | null }
+
+async function resendError(res: Response) {
+  // admin-only hint so a wrong key can be matched against Resend's list (never the whole key)
+  const k = resendKey()
+  const hint = res.status === 401 ? ` · key in use starts "${k.slice(0, 7)}…", ${k.length} characters${/\s/.test(k) ? ', contains a space' : ''}` : ''
+  return `Resend ${res.status}: ${(await res.text()).slice(0, 200)}${hint}`
+}
+
+/** Up to 100 emails in one call (no attachments). Returns Resend's id for each, in order. */
+async function sendBatch(batch: Message[]): Promise<{ ids: (string | null)[]; error: string | null }> {
   const res = await fetch('https://api.resend.com/emails/batch', {
     method: 'POST',
     headers: { Authorization: `Bearer ${resendKey()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(batch),
   })
-  if (!res.ok) {
-    // admin-only hint so a wrong key can be matched against Resend's list (never the whole key)
-    const k = resendKey()
-    const hint = res.status === 401 ? ` · key in use starts "${k.slice(0, 7)}…", ${k.length} characters${/\s/.test(k) ? ', contains a space' : ''}` : ''
-    throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}${hint}`)
-  }
+  if (!res.ok) return { ids: batch.map(() => null), error: await resendError(res) }
+  const json = await res.json().catch(() => null) as { data?: { id: string }[] } | null
+  return { ids: batch.map((_, i) => json?.data?.[i]?.id ?? null), error: null }
 }
 
-export async function sendEmail(draft: EmailDraft, mode: 'test' | 'all'): Promise<{ ok?: boolean; sent?: number; error?: string }> {
+/** One email (needed for attachments: Resend's batch call doesn't take them). */
+async function sendOne(m: Message): Promise<{ id: string | null; error: string | null }> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${resendKey()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(m),
+    })
+    if (res.status === 429) { await sleep(1200); continue } // rate limited: wait and retry
+    if (!res.ok) return { id: null, error: await resendError(res) }
+    const json = await res.json().catch(() => null) as { id?: string } | null
+    return { id: json?.id ?? null, error: null }
+  }
+  return { id: null, error: 'Resend kept rate-limiting this one.' }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+async function audienceLabel(audience: string) {
+  const { supabase } = await requireStaff()
+  if (audience === 'all') return 'All athletes'
+  if (audience === 'captains') return 'Team captains'
+  if (audience.startsWith('division:')) return (await supabase.from('wl_divisions').select('name').eq('id', audience.slice(9)).single()).data?.name ?? 'Division'
+  if (audience.startsWith('team:')) return (await supabase.from('wl_teams').select('name').eq('id', audience.slice(5)).single()).data?.name ?? 'Team'
+  return audience
+}
+
+export async function sendEmail(draft: EmailDraft, mode: 'test' | 'all', files: EmailAttachment[] = []): Promise<{ ok?: boolean; sent?: number; failed?: number; error?: string }> {
   const { supabase, actor } = await requireStaff()
   if (!resendKey()) return { error: 'Email isn’t switched on yet: add RESEND_API_KEY to the Vercel project.' }
   if (!draft.subject.trim() || !draft.body.trim()) return { error: 'Add a subject and a message.' }
+  const totalBytes = files.reduce((n, f) => n + Math.floor((f.content.length * 3) / 4), 0)
+  if (totalBytes > MAX_ATTACHMENT_BYTES) return { error: 'Attachments are too big: keep them under 8 MB in total.' }
+  const attachments = files.map((f) => ({ filename: f.filename.replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120), content: f.content }))
+
   const list = await recipients(draft.audience)
   if (!list.length) return { error: 'No athletes with an email address in that group.' }
 
-  try {
-    if (mode === 'test') {
-      const r = render(draft, list[0])
-      await send([{ from: FROM, to: [actor], subject: `[TEST] ${r.subject}`, html: r.html, text: r.text, reply_to: REPLY_TO }])
-      return { ok: true, sent: 1 }
-    }
-    for (let i = 0; i < list.length; i += 100) {
-      await send(list.slice(i, i + 100).map((r) => { const m = render(draft, r); return { from: FROM, to: [r.email], subject: m.subject, html: m.html, text: m.text, reply_to: REPLY_TO } }))
-    }
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Sending failed.' }
+  const targets = mode === 'test' ? [{ ...list[0], email: actor }] : list
+  const message = (r: Recipient): Message => {
+    const m = render(draft, r)
+    return { from: FROM, to: [r.email], subject: mode === 'test' ? `[TEST] ${m.subject}` : m.subject, html: m.html, text: m.text, reply_to: REPLY_TO, ...(attachments.length ? { attachments } : {}) }
   }
-  await audit(supabase, { actor, action: 'email.send', entity: 'email', reason: `${draft.subject} → ${list.length} recipients (${draft.audience})`, after: { audience: draft.audience, subject: draft.subject, count: list.length } })
-  return { ok: true, sent: list.length }
+
+  const outcomes: Outcome[] = []
+  if (attachments.length) {
+    for (const [i, r] of targets.entries()) {
+      if (i) await sleep(550) // Resend allows ~2 per second
+      const res = await sendOne(message(r))
+      outcomes.push({ email: r.email, name: r.firstName, team: r.team, resend_id: res.id, error: res.error })
+    }
+  } else {
+    for (let i = 0; i < targets.length; i += 100) {
+      const chunk = targets.slice(i, i + 100)
+      const res = await sendBatch(chunk.map(message))
+      chunk.forEach((r, j) => outcomes.push({ email: r.email, name: r.firstName, team: r.team, resend_id: res.ids[j], error: res.error }))
+    }
+  }
+
+  const sent = outcomes.filter((o) => !o.error).length
+  const failed = outcomes.length - sent
+  await supabase.from('wl_email_log').insert({
+    actor, mode, audience: draft.audience, audience_label: mode === 'test' ? `Test to ${actor}` : await audienceLabel(draft.audience),
+    subject: draft.subject, attachments: files.map((f) => ({ filename: f.filename, size: f.size })), recipients: outcomes, sent, failed,
+  })
+  revalidatePath('/admin/emails')
+
+  if (mode === 'all') {
+    await audit(supabase, { actor, action: 'email.send', entity: 'email', reason: `${draft.subject} → ${sent} sent, ${failed} failed (${draft.audience})`, after: { audience: draft.audience, subject: draft.subject, sent, failed, attachments: files.map((f) => f.filename) } })
+  }
+  if (!sent) return { error: outcomes[0]?.error ?? 'Sending failed.' }
+  return { ok: true, sent, failed }
+}
+
+/** Ask Resend what happened to each email in a send (delivered, bounced…). Saved on the log entry. */
+export async function checkDelivery(logId: string): Promise<{ ok?: boolean; error?: string }> {
+  const { supabase } = await requireStaff()
+  if (!resendKey()) return { error: 'Email isn’t switched on.' }
+  const { data: log } = await supabase.from('wl_email_log').select('recipients').eq('id', logId).single()
+  if (!log) return { error: 'Log entry not found.' }
+  const recips = log.recipients as (Outcome & { last_event?: string; checked_at?: string })[]
+  for (const [i, r] of recips.entries()) {
+    if (!r.resend_id || r.last_event === 'delivered' || r.last_event === 'bounced') continue
+    if (i) await sleep(550)
+    const res = await fetch(`https://api.resend.com/emails/${r.resend_id}`, { headers: { Authorization: `Bearer ${resendKey()}` } })
+    if (res.status === 429) { await sleep(1200); continue }
+    if (!res.ok) continue
+    const json = await res.json().catch(() => null) as { last_event?: string } | null
+    if (json?.last_event) { r.last_event = json.last_event; r.checked_at = new Date().toISOString() }
+  }
+  await supabase.from('wl_email_log').update({ recipients: recips }).eq('id', logId)
+  revalidatePath('/admin/emails')
+  return { ok: true }
 }
