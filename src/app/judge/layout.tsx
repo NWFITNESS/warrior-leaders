@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { JudgeOffline } from './offline'
 
 export const metadata: Metadata = {
   title: 'Judge',
@@ -15,5 +16,5 @@ export const viewport: Viewport = {
 }
 
 export default function JudgeLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return <>{children}<JudgeOffline /></>
 }
