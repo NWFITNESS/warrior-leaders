@@ -917,3 +917,15 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
   .stage-qr { display: none !important; }
   .sponsors { height: 34px; } .sponsors .lbl { font-size: 0.6rem; padding: 0 10px; } .sponsors .run span { font-size: 0.9rem; } .sponsors .run i { font-size: 0.6rem; }
 }
+
+.stage.no-dj { grid-template-columns: minmax(0, 1fr) auto; }
+
+/* Admin → Big screen editor */
+.promo-slide { display: grid; grid-template-columns: 64px minmax(0, 1fr) minmax(0, 2.2fr) auto; gap: 8px; align-items: center; }
+.promo-slide .input { min-width: 0; }
+.promo-slide .ic { text-align: center; font-size: 1.3rem; }
+.promo-ctl { display: flex; gap: 4px; }
+.promo-ctl button { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--line-2); background: transparent; color: var(--muted); cursor: pointer; }
+.promo-ctl button:hover:not(:disabled) { color: var(--text); border-color: var(--gold); }
+.promo-ctl button:disabled { opacity: 0.3; cursor: default; }
+@media (max-width: 800px) { .promo-slide { grid-template-columns: 56px minmax(0, 1fr); } .promo-slide .t2, .promo-ctl { grid-column: 1 / -1; } }

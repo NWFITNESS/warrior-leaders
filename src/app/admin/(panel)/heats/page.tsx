@@ -71,6 +71,7 @@ export default async function HeatsPage({ searchParams }: { searchParams: Promis
             <a href="/live" target="_blank" rel="noreferrer">Race + heat times ↗</a>
             <a href="/live?view=race" target="_blank" rel="noreferrer">Race only ↗</a>
             <a href="/tv" target="_blank" rel="noreferrer">Leaderboard ↗</a>
+            <a href="/admin/big-screen">Edit DJ, slides &amp; sponsors</a>
           </span>
         </div>
         <form action={setLiveHeat} className="row" style={{ gap: 8, alignItems: 'center' }}>

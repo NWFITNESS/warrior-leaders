@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { Logo } from '@/components/Logo'
-import { EVENT_LINE } from '@/lib/live-promo'
+import { withDefaults, type LivePromo } from '@/lib/live-promo'
 import { StageBar } from './stage-bar'
 import {
   activePart, clockText, countdown, formatTime, heatClock, heatTimeline, hhmm, laneStates, londonSeconds, ordinal, partTitle,
@@ -41,6 +41,22 @@ function useLive(heatId: string | null, fallback: string | null) {
   return { data, offline, offset }
 }
 
+/** Big-screen extras (DJ, slides, sponsors) from Admin → Big screen; re-read every minute so edits show up on the day. */
+function usePromo() {
+  const [promo, setPromo] = useState<LivePromo>(() => withDefaults(null))
+  useEffect(() => {
+    let alive = true
+    const load = async () => {
+      const { data, error } = await db().rpc('wl_public_promo')
+      if (alive && !error) setPromo(withDefaults(data as Partial<LivePromo>))
+    }
+    void load()
+    const id = window.setInterval(load, 60_000)
+    return () => { alive = false; window.clearInterval(id) }
+  }, [])
+  return promo
+}
+
 function useNow(ms = 200) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), ms); return () => window.clearInterval(id) }, [ms])
@@ -63,6 +79,7 @@ export function LiveScreen({ mode, heatId, at, qr = null }: { mode: 'split' | 'r
   // the heat that's on now (or next, or the last one) by the clock: the race shows it when nobody is scoring
   const [fallback, setFallback] = useState<string | null>(null)
   const { data, offline, offset } = useLive(heatId, fallback)
+  const promo = usePromo()
   const now = useClock(offset, at)
   const line = data ? heatTimeline(data.heats, now) : []
   const byClock = (line.find((t) => t.state === 'now') ?? line.find((t) => t.state === 'next') ?? line.filter((t) => t.state === 'done').at(-1))?.heat.id ?? null
@@ -81,12 +98,12 @@ export function LiveScreen({ mode, heatId, at, qr = null }: { mode: 'split' | 'r
               <h1>{heat.workout_name}</h1>
             </>
           ) : (
-            <h1>{EVENT_LINE}</h1>
+            <h1>{promo.event_line}</h1>
           )}
         </div>
         <div className="live-now">
           <b className="mono">{clockText(now)}</b>
-          <span>{offline ? <span className="j-sync bad">Reconnecting…</span> : EVENT_LINE}</span>
+          <span>{offline ? <span className="j-sync bad">Reconnecting…</span> : promo.event_line}</span>
         </div>
       </header>
 
@@ -100,7 +117,7 @@ export function LiveScreen({ mode, heatId, at, qr = null }: { mode: 'split' | 'r
       )}
 
       <footer className="live-foot">
-        <StageBar qr={qr} />
+        <StageBar qr={qr} promo={promo} />
         <span className="live-pb">Powered by <Logo width={110} /></span>
       </footer>
     </main>
