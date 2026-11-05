@@ -88,10 +88,11 @@ export async function previewEmail(draft: EmailDraft) {
 /** The key as pasted into Vercel, minus stray spaces / quotes / line breaks. */
 const resendKey = () => (process.env.RESEND_API_KEY ?? '').trim().replace(/^['"]+|['"]+$/g, '').trim()
 
-export interface EmailAttachment { filename: string; content: string /* base64 */; size: number }
-const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024 // all files together
+/** Uploaded by the browser to the private 'wl-email-attachments' bucket first (Vercel caps a request at 4.5 MB). */
+export interface EmailAttachment { filename: string; path: string; size: number }
+const MAX_ATTACHMENT_BYTES = 35 * 1024 * 1024 // all files together (Resend's limit is 40 MB per email)
 
-type Message = { from: string; to: string[]; subject: string; html: string; text: string; reply_to: string; attachments?: { filename: string; content: string }[] }
+type Message = { from: string; to: string[]; subject: string; html: string; text: string; reply_to: string; attachments?: { filename: string; path: string }[] }
 type Outcome = { email: string; name: string; team: string; resend_id: string | null; error: string | null }
 
 async function resendError(res: Response) {
@@ -144,9 +145,14 @@ export async function sendEmail(draft: EmailDraft, mode: 'test' | 'all', files: 
   const { supabase, actor } = await requireStaff()
   if (!resendKey()) return { error: 'Email isn’t switched on yet: add RESEND_API_KEY to the Vercel project.' }
   if (!draft.subject.trim() || !draft.body.trim()) return { error: 'Add a subject and a message.' }
-  const totalBytes = files.reduce((n, f) => n + Math.floor((f.content.length * 3) / 4), 0)
-  if (totalBytes > MAX_ATTACHMENT_BYTES) return { error: 'Attachments are too big: keep them under 8 MB in total.' }
-  const attachments = files.map((f) => ({ filename: f.filename.replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120), content: f.content }))
+  if (files.reduce((n, f) => n + f.size, 0) > MAX_ATTACHMENT_BYTES) return { error: 'Attachments are too big: keep them under 35 MB in total.' }
+  // Resend fetches each file itself from a short-lived signed link
+  const attachments: { filename: string; path: string }[] = []
+  for (const f of files) {
+    const { data, error } = await supabase.storage.from('wl-email-attachments').createSignedUrl(f.path, 60 * 60 * 2)
+    if (error || !data?.signedUrl) return { error: `Couldn’t find the attachment “${f.filename}”. Remove it and attach it again.` }
+    attachments.push({ filename: f.filename.replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120), path: data.signedUrl })
+  }
 
   const list = await recipients(draft.audience)
   if (!list.length) return { error: 'No athletes with an email address in that group.' }

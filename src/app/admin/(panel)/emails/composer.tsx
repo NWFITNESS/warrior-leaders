@@ -2,18 +2,10 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { previewEmail, sendEmail, type EmailAttachment, type EmailDraft } from './actions'
+import { createClient } from '@/lib/supabase/client'
 
-const MAX_BYTES = 8 * 1024 * 1024 // all attachments together (matches the server)
+const MAX_BYTES = 35 * 1024 * 1024 // all attachments together (matches the server)
 const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`)
-
-function toBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader()
-    r.onload = () => resolve(String(r.result).split(',')[1] ?? '')
-    r.onerror = () => reject(r.error)
-    r.readAsDataURL(file)
-  })
-}
 
 const TEMPLATES: { name: string; subject: string; body: string }[] = [
   {
@@ -66,13 +58,22 @@ export function EmailComposer({ divisions, teams, me }: { divisions: { id: strin
   const [files, setFiles] = useState<EmailAttachment[]>([])
   const total = files.reduce((n, f) => n + f.size, 0)
 
+  const [uploading, setUploading] = useState(false)
+  // files go straight from this browser to private storage; the send only passes their names
   async function addFiles(list: FileList | null) {
     if (!list?.length) return
+    const picked = Array.from(list)
+    if ([...files, ...picked].reduce((n, f) => n + f.size, 0) > MAX_BYTES) { setMsg({ error: 'Attachments must be under 35 MB in total.' }); return }
+    setUploading(true); setMsg({})
+    const supabase = createClient()
     const added: EmailAttachment[] = []
-    for (const f of Array.from(list)) added.push({ filename: f.name, size: f.size, content: await toBase64(f) })
-    const next = [...files, ...added]
-    if (next.reduce((n, f) => n + f.size, 0) > MAX_BYTES) { setMsg({ error: 'Attachments must be under 8 MB in total.' }); return }
-    setFiles(next); setConfirm(false); setMsg({})
+    for (const f of picked) {
+      const path = `${crypto.randomUUID()}/${f.name.replace(/[^\w.\- ]+/g, '_')}`
+      const { error } = await supabase.storage.from('wl-email-attachments').upload(path, f, { contentType: f.type || undefined })
+      if (error) { setUploading(false); setMsg({ error: `Couldn’t upload ${f.name}: ${error.message}` }); return }
+      added.push({ filename: f.name, size: f.size, path })
+    }
+    setFiles((cur) => [...cur, ...added]); setConfirm(false); setUploading(false)
   }
 
   useEffect(() => {
@@ -118,10 +119,10 @@ export function EmailComposer({ divisions, teams, me }: { divisions: { id: strin
           <span>Attachments</span>
           <div className="row" style={{ gap: 10 }}>
             <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
-              Attach a file
-              <input type="file" multiple hidden onChange={(e) => { void addFiles(e.target.files); e.target.value = '' }} />
+              {uploading ? 'Uploading…' : 'Attach a file'}
+              <input type="file" multiple hidden disabled={uploading} onChange={(e) => { void addFiles(e.target.files); e.target.value = '' }} />
             </label>
-            <span className="small subtle">{files.length ? `${kb(total)} of 8 MB` : 'PDF, image or document. Up to 8 MB in total.'}</span>
+            <span className="small subtle">{files.length ? `${kb(total)} of 35 MB` : 'PDF, image or document. Up to 35 MB in total.'}</span>
           </div>
           {files.length > 0 && (
             <ul className="attach-list">
