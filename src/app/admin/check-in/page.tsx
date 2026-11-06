@@ -1,7 +1,7 @@
 import { requireStaff } from '@/lib/auth'
 import { CheckIn, type CheckInTeam } from './check-in'
 
-export const metadata = { title: 'Check-in' }
+export const metadata = { title: 'Check-in', manifest: '/check-in.webmanifest', appleWebApp: { capable: true, title: 'WL Check-in', statusBarStyle: 'black-translucent' as const } }
 export const dynamic = 'force-dynamic'
 
 /** Morning registration on a tablet: search a team, tap each athlete as they arrive. */

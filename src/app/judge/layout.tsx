@@ -4,6 +4,7 @@ import { JudgeOffline } from './offline'
 export const metadata: Metadata = {
   title: 'Judge',
   robots: { index: false },
+  manifest: '/judge.webmanifest', // home-screen icon opens the judge app, not the leaderboard
   appleWebApp: { capable: true, title: 'WL Judge', statusBarStyle: 'black-translucent' },
 }
 
