@@ -42,6 +42,7 @@ export interface Assignments {
   heats?: JudgeHeat[] // every heat, with who's on each lane
   workouts?: JudgeWorkout[]
   open_events?: OpenEvent[]
+  scores_reset_at?: number | null // ms; anything this phone saved before it is stale (e.g. a demo)
 }
 
 // ── Safe localStorage ──────────────────────────────────────────────────────────
@@ -122,6 +123,7 @@ export async function fetchAssignments(): Promise<Assignments | { error: 'signed
   const { data, error } = await db().rpc('wl_judge_assignments', { p_token: token })
   if (error) return { error: 'offline' }
   if (data?.error === 'signed_out') { remove(TOKEN); return { error: 'signed_out' } }
+  if (data?.scores_reset_at) dropStale(Number(data.scores_reset_at))
   write(CACHE, data)
   if (Date.now() - lastClockSync > 60_000) { lastClockSync = Date.now(); void syncClock() } // also right after sign-in
   return data as Assignments
@@ -145,6 +147,28 @@ export async function claimLane(laneId: string, force = false): Promise<{ laneId
   if (error) return { error: 'offline' }
   if (data?.error) return { error: data.error, judgeName: data.judge_name ?? undefined }
   return { laneId: data.lane_assignment_id }
+}
+
+// ── Scores reset (Admin wiped scores, e.g. after a demo) ───────────────────────
+// Drop this phone's drafts and unsent scores from before the reset, so they can't come back.
+const RESET = 'wl-judge-reset-seen'
+function dropStale(resetMs: number) {
+  if (read<number>(RESET, 0) >= resetMs) return
+  try {
+    const box = read<Record<string, Pending>>(OUTBOX, {})
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i)
+      if (!key?.startsWith('wl-draft:')) continue
+      const d = read<Draft | null>(key, null)
+      if (d && d.updatedAt >= resetMs) continue
+      remove(key)
+      const [, lane, part] = key.split(':')
+      for (const [k, item] of Object.entries(box)) if (item.lane === lane && item.part === part) delete box[k]
+    }
+    write(OUTBOX, box)
+  } catch { /* ignore */ }
+  write(RESET, resetMs)
+  notify()
 }
 
 // ── Drafts (this phone's copy of each score) ───────────────────────────────────
