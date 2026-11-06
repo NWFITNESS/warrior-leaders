@@ -45,7 +45,7 @@ export function DjScreen({ at }: { at: string | null }) {
 
   // the heat the judges are actually scoring (can differ from the timetable if we're running late)
   const floor = data?.heats.find((h) => h.id === data.heat_id) ?? null
-  const behind = floor && onNow && floor.id !== onNow.heat.id && (floor.start_time ?? '') < (onNow.heat.start_time ?? '')
+  const behind = !at && floor && onNow && floor.id !== onNow.heat.id && (floor.start_time ?? '') < (onNow.heat.start_time ?? '')
 
   // rolling list: keep the current heat near the top
   const listRef = useRef<HTMLOListElement>(null)

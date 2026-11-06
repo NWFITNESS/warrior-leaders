@@ -180,3 +180,15 @@ export const clockText = (sec: number) => `${String(Math.floor(sec / 3600) % 24)
 export const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`
 export const hhmm = (t: string | null) => (t ? t.slice(0, 5) : 'TBC')
 export { formatTime, partTitle }
+
+/** Rehearsal time from the address (?at=09:25). Forgiving: 09:25, 9:25, 09.25, 0925, 925, 9.25am, 2:30pm. Returns "HH:MM" or null. */
+export function parseAt(raw: string | undefined | null): string | null {
+  if (!raw) return null
+  const m = raw.trim().toLowerCase().replace(/\s+/g, '').match(/^(\d{1,2})[:.]?(\d{2})(am|pm)?$/)
+  if (!m) return null
+  let h = Number(m[1]); const min = Number(m[2])
+  if (m[3] === 'pm' && h < 12) h += 12
+  if (m[3] === 'am' && h === 12) h = 0
+  if (h > 23 || min > 59) return null
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+}
