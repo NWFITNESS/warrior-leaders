@@ -21,6 +21,7 @@ export default async function BigScreenPage() {
         </div>
         <div className="row">
           <a href="/live" target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Open the TV screen ↗</a>
+          <a href="/dj" target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">DJ iPad view ↗</a>
           <a href="/admin/heats" className="btn btn-ghost btn-sm">Pick the heat shown</a>
         </div>
       </div>

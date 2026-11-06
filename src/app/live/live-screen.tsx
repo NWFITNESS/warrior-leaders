@@ -20,7 +20,7 @@ function db() {
   return client
 }
 
-function useLive(heatId: string | null, fallback: string | null) {
+export function useLive(heatId: string | null, fallback: string | null) {
   const [data, setData] = useState<LiveData | null>(null)
   const [offline, setOffline] = useState(false)
   const [offset, setOffset] = useState(0) // server clock − this screen's clock
@@ -42,7 +42,7 @@ function useLive(heatId: string | null, fallback: string | null) {
 }
 
 /** Big-screen extras (DJ, slides, sponsors) from Admin → Big screen; re-read every minute so edits show up on the day. */
-function usePromo() {
+export function usePromo() {
   const [promo, setPromo] = useState<LivePromo>(() => withDefaults(null))
   useEffect(() => {
     let alive = true
@@ -64,7 +64,7 @@ function useNow(ms = 200) {
 }
 
 /** UK time of day in seconds, corrected to the server clock. Rehearsal (?at=09:25) starts from that time instead. */
-function useClock(offset: number, at: string | null) {
+export function useClock(offset: number, at: string | null) {
   const ms = useNow(1000) + offset
   const [opened] = useState(() => Date.now())
   if (!at) return londonSeconds(ms)
