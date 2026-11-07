@@ -42,7 +42,7 @@ export interface Assignments {
   heats?: JudgeHeat[] // every heat, with who's on each lane
   workouts?: JudgeWorkout[]
   open_events?: OpenEvent[]
-  scores_reset_at?: number | null // ms; anything this phone saved before it is stale (e.g. a demo)
+  score_resets?: Record<string, number> // part id -> ms: this phone's copies from before then were cleared by Admin
 }
 
 // ── Safe localStorage ──────────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ export async function fetchAssignments(): Promise<Assignments | { error: 'signed
   const { data, error } = await db().rpc('wl_judge_assignments', { p_token: token })
   if (error) return { error: 'offline' }
   if (data?.error === 'signed_out') { remove(TOKEN); return { error: 'signed_out' } }
-  if (data?.scores_reset_at) dropStale(Number(data.scores_reset_at))
+  if (data?.score_resets) dropStale(data.score_resets)
   write(CACHE, data)
   if (Date.now() - lastClockSync > 60_000) { lastClockSync = Date.now(); void syncClock() } // also right after sign-in
   return data as Assignments
@@ -149,26 +149,27 @@ export async function claimLane(laneId: string, force = false): Promise<{ laneId
   return { laneId: data.lane_assignment_id }
 }
 
-// ── Scores reset (Admin wiped scores, e.g. after a demo) ───────────────────────
-// Drop this phone's drafts and unsent scores from before the reset, so they can't come back.
-const RESET = 'wl-judge-reset-seen'
-function dropStale(resetMs: number) {
-  if (read<number>(RESET, 0) >= resetMs) return
+// ── Scores reset (Admin → Judges → Clear practice scores) ─────────────────────
+// The server sends { part_id: reset ms }. Drafts and unsent scores this phone saved for that part
+// before the reset are deleted, so cleared practice scores can't reappear or upload again.
+function dropStale(resets: Record<string, number>) {
   try {
     const box = read<Record<string, Pending>>(OUTBOX, {})
+    let changed = false
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i)
       if (!key?.startsWith('wl-draft:')) continue
+      const [, lane, part] = key.split(':')
+      const resetMs = Number(resets[part] ?? 0)
+      if (!resetMs) continue
       const d = read<Draft | null>(key, null)
       if (d && d.updatedAt >= resetMs) continue
       remove(key)
-      const [, lane, part] = key.split(':')
+      changed = true
       for (const [k, item] of Object.entries(box)) if (item.lane === lane && item.part === part) delete box[k]
     }
-    write(OUTBOX, box)
+    if (changed) { write(OUTBOX, box); notify() }
   } catch { /* ignore */ }
-  write(RESET, resetMs)
-  notify()
 }
 
 // ── Drafts (this phone's copy of each score) ───────────────────────────────────

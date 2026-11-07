@@ -4,6 +4,7 @@ import type { Judge, Settings } from '@/lib/types'
 import { JudgeRow } from './judge-row'
 import { saveJudge } from './actions'
 import { CopyLink } from './copy-link'
+import { ResetScores, type ResetEvent } from './reset-scores'
 
 export const metadata = { title: 'Judges' }
 
@@ -11,10 +12,19 @@ const JUDGE_URL = 'https://leaders.northernwarrior.co.uk/judge'
 
 export default async function JudgesPage() {
   const { supabase } = await requireStaff()
-  const [{ data: judges }, { data: settings }] = await Promise.all([
+  const [{ data: judges }, { data: settings }, { data: workouts }, { data: scoreRows }, { data: claimRows }] = await Promise.all([
     supabase.from('wl_judges').select('*').order('role').order('name').returns<Judge[]>(),
     supabase.from('wl_competition_settings').select('judge_code, head_judge_code').single<Pick<Settings, 'judge_code' | 'head_judge_code'>>(),
+    supabase.from('wl_workouts').select('id, number, name').order('number'),
+    supabase.from('wl_scores').select('id, part:wl_workout_parts(workout_id)'),
+    supabase.from('wl_lane_assignments').select('id, heat:wl_heats(workout_id)').not('judge_id', 'is', null),
   ])
+  const wid = (x: unknown) => (Array.isArray(x) ? x[0] : x) as { workout_id: string } | null
+  const resetEvents: ResetEvent[] = (workouts ?? []).map((w) => ({
+    id: w.id, number: w.number, name: w.name,
+    scores: (scoreRows ?? []).filter((s) => wid(s.part)?.workout_id === w.id).length,
+    claimed: (claimRows ?? []).filter((c) => wid(c.heat)?.workout_id === w.id).length,
+  }))
   const qr = await QRCode.toString(JUDGE_URL, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
   const qrHref = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr)}`
   const heads = judges?.filter((j) => j.role === 'head') ?? []
@@ -79,6 +89,8 @@ export default async function JudgesPage() {
         </div>
       )}
       <p className="small subtle">Lane judges appear here once they sign up. Switching one off signs them out and stops them signing back in with that name.</p>
+
+      <ResetScores events={resetEvents} />
     </>
   )
 }
