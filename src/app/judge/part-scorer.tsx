@@ -279,9 +279,20 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
         <section className="j-timer">{roundsBar}</section>
         <div className="j-banner ok">All {multi ? `${entries.rounds.length} rounds` : 'movements'} recorded. Check the score with the captain.</div>
         <div className="j-toolbar">
-          <button type="button" className="j-tool" onClick={() => { const last = entries.rounds.length - 1; onChange({ kind: 'for_time', rounds: entries.rounds.map((r, i) => (i === last ? { started_at: null, ticks: [], capped: false, partial_reps: null } : r)) }, [ev('reset_round', { round: last + 1 })]) }}>
-            Redo last {multi ? 'round' : 'attempt'}
-          </button>
+          {/* Undo just the last tick (a double-tap on the final movement); wiping the round needs a confirm */}
+          {(() => { const last = entries.rounds.length - 1; const lr = entries.rounds[last]; return lr && lr.ticks.length > 0 && !lr.capped ? (
+            <button type="button" className="j-tool" onClick={() => onChange({ kind: 'for_time', rounds: entries.rounds.map((r, i) => (i === last ? { ...r, reps_done: 0, ticks: r.ticks.slice(0, -1) } : r)) }, [ev('untick', { round: last + 1, movement_id: lr.ticks.at(-1)?.movement_id })])}>
+              Undo last tick
+            </button>
+          ) : null })()}
+          {confirmReset ? (
+            <>
+              <button type="button" className="j-tool danger" onClick={() => { setConfirmReset(false); const last = entries.rounds.length - 1; onChange({ kind: 'for_time', rounds: entries.rounds.map((r, i) => (i === last ? { started_at: null, ticks: [], capped: false, partial_reps: null } : r)) }, [ev('reset_round', { round: last + 1 })]) }}>Wipe and redo</button>
+              <button type="button" className="j-tool" onClick={() => setConfirmReset(false)}>Cancel</button>
+            </>
+          ) : (
+            <button type="button" className="j-tool danger" onClick={() => setConfirmReset(true)}>Redo last {multi ? 'round' : 'attempt'}</button>
+          )}
         </div>
       </>
     )
