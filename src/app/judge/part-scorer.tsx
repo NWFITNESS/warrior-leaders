@@ -302,6 +302,10 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
   const remaining = cap != null ? cap - elapsed : null
   const tickNow = (m: JudgePart['part_movements'][number]) => {
     const at = Math.round(elapsed * 10) / 10
+    // When the last rep ticks a movement, the next movement's "Done" slides up under the judge's finger.
+    // Ignore a Done within 3s of the previous tick so a follow-up tap can't finish the next movement too.
+    const prev = round.ticks.at(-1)
+    if (prev && at - prev.at < 3) return
     update({ ...round, reps_done: 0, ticks: [...round.ticks, { movement_id: m.id!, at }] }, [ev('tick', { round: ri + 1, movement_id: m.id, movement: m.name, at_seconds: at })])
   }
 
