@@ -93,13 +93,16 @@ export function HeatBoard({ heats, workouts, judgeId, head, onTake }: {
                 const status = head
                   ? (l.done ? ['Submitted', 'gold'] : l.started ? ['Scoring', 'warn'] : l.judge_id ? ['Ready', ''] : ['No judge', 'warn'])
                   : (mine ? ['You', 'ok'] : l.done ? ['Submitted', 'gold'] : l.judge_id ? [first(l.judge_name), ''] : ['Take', 'gold'])
+                // head judges: colour each lane by state so who's on what reads at a glance
+                const hj = head ? ` hj ${l.done ? 'done' : l.started ? 'scoring' : l.judge_id ? 'taken' : 'free'}` : ''
                 return (
-                  <button key={l.lane_assignment_id} type="button" className={`j-lane${mine && !head ? ' next' : ''}`} disabled={locked || !!busy}
+                  <button key={l.lane_assignment_id} type="button" className={`j-lane${mine && !head ? ' next' : ''}${hj}`} disabled={locked || !!busy}
                     onClick={() => take(l)}>
                     <span className="no">{l.lane}</span>
                     <span className="main">
                       <b>{l.team_name}</b>
-                      <small>{l.division}{head ? ` · ${l.judge_name ?? 'no judge yet'}` : ''}</small>
+                      <small>{l.division}</small>
+                      {head && <span className="hj-judge">{l.judge_id ? `👤 ${l.judge_name ?? 'Judge'}` : 'No judge yet'}</span>}
                     </span>
                     <span className={`j-status ${status[1]}`}>{busy === l.lane_assignment_id ? 'Opening…' : status[0]}</span>
                     {!locked && <span className="chev" aria-hidden>›</span>}
