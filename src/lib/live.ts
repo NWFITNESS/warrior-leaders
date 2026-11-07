@@ -32,6 +32,8 @@ export interface LaneState {
   value: number | null
   runningSince: number | null // epoch ms the judge started this lane's current round
   place: number | null
+  /** for time: seconds used so far (each round's last tick), breaks ties on equal reps */
+  elapsed: number
 }
 
 const isEntries = (e: LiveProgress['entries'] | undefined): e is Entries => !!e && 'kind' in e
@@ -51,7 +53,7 @@ export function laneStates(heat: LiveHeat, rawPart: WorkoutPart & { id: string }
     const part = resolvePart(rawPart, lane.level)
     const row = progress.find((p) => p.lane_assignment_id === lane.lane_assignment_id && p.part_id === rawPart.id)
     const entries = isEntries(row?.entries) ? row.entries : null
-    const base: LaneState = { lane, started: false, finished: false, fraction: 0, amount: 0, now: 'Ready', result: '', capped: false, value: null, runningSince: null, place: null }
+    const base: LaneState = { lane, started: false, finished: false, fraction: 0, amount: 0, now: 'Ready', result: '', capped: false, value: null, runningSince: null, place: null, elapsed: 0 }
     if (!entries) return base
     const score = computeScore(part, lane.sex, entries)
     const done = score.complete || row?.status === 'submitted' || row?.status === 'verified' || row?.status === 'appeal'
@@ -60,8 +62,9 @@ export function laneStates(heat: LiveHeat, rawPart: WorkoutPart & { id: string }
       const mv = part.part_movements
       const per = repsPerRound(part, lane.sex)
       const total = per * entries.rounds.length
-      let reps = 0
+      let reps = 0, elapsed = 0
       entries.rounds.forEach((r) => {
+        if (r.ticks.length) elapsed += Math.max(...r.ticks.map((t) => t.at))
         if (mv.length && r.ticks.length >= mv.length) reps += per
         else if (r.capped && r.partial_reps != null) reps += cappedRoundReps(part, lane.sex, r)
         else if (r.started_at) reps += cappedRoundReps(part, lane.sex, { ...r, partial_reps: r.reps_done ?? 0 })
@@ -82,6 +85,7 @@ export function laneStates(heat: LiveHeat, rawPart: WorkoutPart & { id: string }
         finished: done,
         fraction: total ? Math.min(1, done && !score.capped ? 1 : reps / total) : done ? 1 : 0,
         amount: reps,
+        elapsed,
         now,
         result: done ? score.display : `${reps} reps`,
         capped: score.capped,
@@ -117,18 +121,19 @@ export function laneStates(heat: LiveHeat, rawPart: WorkoutPart & { id: string }
       s.fraction = best <= 0 ? 0 : lowerWins ? (worst > 0 ? worst / Math.max(s.amount, 1e-9) : 0) : s.amount / best
     })
   }
-  const ranked = states.filter((s) => s.started).sort((a, b) => {
+  // no place until a lane has actually done something (stops everyone showing 1st at the start)
+  const ranked = states.filter((s) => s.started && (s.finished || s.amount > 0)).sort((a, b) => {
     if (timeBased) {
       const af = a.finished && a.value != null, bf = b.finished && b.value != null
       if (af && bf) return a.value! - b.value!
       if (af !== bf) return af ? -1 : 1
-      return b.amount - a.amount
+      return b.amount - a.amount || a.elapsed - b.elapsed
     }
     return lowerWins ? a.amount - b.amount : b.amount - a.amount
   })
   ranked.forEach((s, i) => {
     const prev = ranked[i - 1]
-    const tie = prev && (timeBased ? prev.finished === s.finished && (s.finished ? prev.value === s.value : prev.amount === s.amount) : prev.amount === s.amount)
+    const tie = prev && (timeBased ? prev.finished === s.finished && (s.finished ? prev.value === s.value : prev.amount === s.amount && prev.elapsed === s.elapsed) : prev.amount === s.amount)
     s.place = tie ? prev.place : i + 1
   })
   return states
