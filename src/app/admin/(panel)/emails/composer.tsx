@@ -30,6 +30,27 @@ See you on the floor,
 Northern Warrior Competitions`,
   },
   {
+    name: 'Comp morning',
+    subject: 'See you this morning: {competition}',
+    body: `Hi {first_name},
+
+Today's the day! We're looking forward to seeing you and {team} this morning.
+
+Doors open at 08:00. Registration is in the front room, straight through the front doors. A member of staff will be there to greet you, sign you in and give you your team card.
+
+08:00 Doors open
+08:30 Athlete briefing (please don't miss this)
+09:00 First heat
+
+Your heat times ({division}):
+{heats}
+
+Workouts, standards and the live leaderboard: https://leaders.northernwarrior.co.uk
+
+Good luck today, enjoy every minute of it!
+Northern Warrior Competitions`,
+  },
+  {
     name: 'General update',
     subject: '{competition}: update',
     body: `Hi {first_name},
