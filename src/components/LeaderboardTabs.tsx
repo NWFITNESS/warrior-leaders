@@ -64,7 +64,7 @@ export function BoardTable({ board, pinned, lowerWins, limit, linkTeams = true }
               <Fragment key={r.teamId}>
                 {/* tap a team to see every event's result (the event columns are hidden on phones) */}
                 <tr className={`lb-row${r.teamId === pinned ? ' pinned' : ''}${isOpen ? ' open' : ''}`} onClick={() => setOpen(isOpen ? null : r.teamId)} aria-expanded={isOpen}>
-                  <td className="lb-rank">{board.events.length ? r.rank : '–'}</td>
+                  <td className={`lb-rank${board.events.length && r.rank <= 3 ? ` m${r.rank}` : ''}`}><span>{board.events.length ? r.rank : '–'}</span></td>
                   <td className="lb-team">
                     <span className="lb-name">{r.team}</span>
                     <small>{r.athletes}</small>

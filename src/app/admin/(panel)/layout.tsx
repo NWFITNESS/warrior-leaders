@@ -1,6 +1,6 @@
 import { requireStaff } from '@/lib/auth'
 import { signOut } from '../login/actions'
-import { AdminNav } from './nav'
+import { AdminMobileBar, AdminNav } from './nav'
 import { Logo } from '@/components/Logo'
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
@@ -20,6 +20,11 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <a href="/" target="_blank" rel="noreferrer">View public site ↗</a>
         </div>
       </aside>
+      <AdminMobileBar>
+        <span>{actor}</span>
+        <a href="/" target="_blank" rel="noreferrer">View public site ↗</a>
+        <form action={signOut}><button className="linkbtn">Sign out</button></form>
+      </AdminMobileBar>
       <main className="admin-main">{children}</main>
     </div>
   )

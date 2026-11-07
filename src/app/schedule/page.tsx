@@ -14,8 +14,13 @@ export default async function SchedulePage() {
       <PublicNav current="/schedule" />
       <header className="stack-sm"><span className="eyebrow">Schedule</span><h1>Heats</h1></header>
       {workouts.length === 0 && <div className="empty">Heat times will be published before the day.</div>}
+      {workouts.length > 1 && (
+        <nav className="jump-chips" aria-label="Jump to event">
+          {workouts.map((w) => <a key={w.id} href={`#event-${w.number}`}>Event {w.number}</a>)}
+        </nav>
+      )}
       {workouts.map((w) => (
-        <section key={w.id} className="stack-sm">
+        <section key={w.id} id={`event-${w.number}`} className="stack-sm sched-ev">
           <h2>Event {w.number} · {w.name}</h2>
           {heats.filter((h) => h.workout_id === w.id).map((h) => (
             <div key={h.heat_id} className="card stack-sm" style={{ padding: '12px 16px' }}>
