@@ -156,21 +156,59 @@ export function londonSeconds(ms: number) {
 }
 const secs = (t: string) => { const [h, m, x] = t.split(':').map(Number); return h * 3600 + m * 60 + (x || 0) }
 
-export interface TimedHeat { heat: LiveHeat; start: number | null; end: number | null; state: 'done' | 'now' | 'next' | 'later' }
+export interface TimedHeat {
+  heat: LiveHeat; start: number | null; end: number | null; state: 'done' | 'now' | 'next' | 'later'
+  /** start time from Admin → Heats (seconds since midnight) */
+  sched: number | null
+  /** start came from the judges actually pressing start */
+  live: boolean
+  /** its time has come but nobody has pressed start yet */
+  waiting?: boolean
+}
 
-/** On now = from its start time until its workout time is up (no cap: until the next heat starts). */
-export function heatTimeline(heats: LiveHeat[], now: number): TimedHeat[] {
-  const timed = heats.filter((h) => h.start_time).map((h) => ({ heat: h, start: secs(h.start_time!) })).sort((a, b) => a.start - b.start)
-  const out: TimedHeat[] = timed.map(({ heat, start }, i) => {
-    const following = timed.slice(i + 1).find((x) => x.start > start)?.start ?? null
+/**
+ * On now = from its start time until its workout time is up (no cap: until the next heat starts).
+ * With `starts` (heat id → epoch ms the judges started it) the timeline runs live: a started heat runs from
+ * its real start, and heats still to come move back by however late we're running. A new event starts at its
+ * own time unless the event before runs over (then 5 min after it ends). A heat whose time has come but
+ * hasn't been started waits at "starting" until a judge presses start.
+ */
+export function heatTimeline(heats: LiveHeat[], now: number, starts?: Record<string, number> | null): TimedHeat[] {
+  const timed = heats.filter((h) => h.start_time).map((h) => ({ heat: h, sched: secs(h.start_time!) })).sort((a, b) => a.sched - b.sched)
+  const placed: { heat: LiveHeat; sched: number; start: number; live: boolean; waiting?: boolean }[] = []
+  let delay = 0
+  const lastLive = starts ? timed.findLastIndex((t) => starts[t.heat.id] != null) : -1
+  timed.forEach(({ heat, sched }, i) => {
+    const actual = starts?.[heat.id]
+    if (actual != null) {
+      const start = londonSeconds(actual)
+      delay = start - sched
+      placed.push({ heat, sched, start, live: true })
+      return
+    }
+    if (!starts) { placed.push({ heat, sched, start: sched, live: false }); return }
+    const prev = placed[i - 1]
+    let d = Math.max(0, delay)
+    if (prev && prev.heat.workout_id !== heat.workout_id) {
+      const prevEnd = prev.start + (prev.heat.duration_seconds > 0 ? prev.heat.duration_seconds : 15 * 60)
+      d = Math.max(0, prevEnd + 5 * 60 - sched)
+    }
+    // its time has come but the judges haven't pressed start: hold it at "starting" (later heats move with it)
+    const waiting = i > lastLive && sched + d <= now
+    if (waiting) d = now - sched
+    delay = d
+    placed.push({ heat, sched, start: sched + d, live: false, waiting })
+  })
+  const out: TimedHeat[] = placed.map(({ heat, sched, start, live, waiting }, i) => {
+    const following = placed.slice(i + 1).find((x) => x.start > start)?.start ?? null
     const end = heat.duration_seconds > 0 ? start + heat.duration_seconds : following ?? start + 15 * 60
-    const state: TimedHeat['state'] = now >= end ? 'done' : now >= start ? 'now' : 'later'
-    return { heat, start, end, state }
+    const state: TimedHeat['state'] = waiting ? 'later' : now >= end ? 'done' : now >= start ? 'now' : 'later'
+    return { heat, start, end, state, sched, live, waiting }
   })
   const firstLater = out.find((x) => x.state === 'later')
   if (firstLater) firstLater.state = 'next'
   // heats without a time yet go last
-  heats.filter((h) => !h.start_time).forEach((h) => out.push({ heat: h, start: null, end: null, state: 'later' }))
+  heats.filter((h) => !h.start_time).forEach((h) => out.push({ heat: h, start: null, end: null, state: 'later', sched: null, live: false }))
   return out
 }
 

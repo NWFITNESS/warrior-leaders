@@ -13,7 +13,7 @@ import {
 const POLL_MS = 2000
 
 let client: SupabaseClient | null = null
-function db() {
+export function db() {
   client ??= createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   })

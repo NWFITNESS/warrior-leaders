@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
-import { useClock, useLive, usePromo } from '../live/live-screen'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { db, useClock, useLive, usePromo } from '../live/live-screen'
 import { clockText, countdown, heatTimeline, hhmm, type LiveHeat, type TimedHeat } from '@/lib/live'
 
 type Cue =
@@ -28,12 +28,30 @@ function useWakeLock() {
   }, [])
 }
 
+/** When the judges actually started each heat (heat id → epoch ms), so the DJ clock runs live. */
+function useHeatStarts(enabled: boolean) {
+  const [starts, setStarts] = useState<Record<string, number> | null>(null)
+  useEffect(() => {
+    if (!enabled) return
+    let alive = true
+    const load = async () => {
+      const { data, error } = await db().rpc('wl_public_heat_starts')
+      if (alive && !error && data) setStarts(data as Record<string, number>)
+    }
+    void load()
+    const id = window.setInterval(load, 3000)
+    return () => { alive = false; window.clearInterval(id) }
+  }, [enabled])
+  return starts
+}
+
 export function DjScreen({ at }: { at: string | null }) {
   useWakeLock()
   const { data, offline, offset } = useLive(null, null)
   const promo = usePromo()
   const now = useClock(offset, at)
-  const line = useMemo(() => (data ? heatTimeline(data.heats, now) : []), [data, now])
+  const starts = useHeatStarts(!at) // rehearsal (?at=) stays on the printed times
+  const line = useMemo(() => (data ? heatTimeline(data.heats, now, starts) : []), [data, now, starts])
 
   const onNow = line.find((t) => t.state === 'now')
   const next = line.find((t) => t.state === 'next')
@@ -43,9 +61,9 @@ export function DjScreen({ at }: { at: string | null }) {
       ? (next.start - now <= 10 ? { kind: 'go', t: next, in: next.start - now } : next.start - now <= 120 ? { kind: 'ready', t: next, in: next.start - now } : { kind: 'break', t: next, in: next.start - now })
       : line.length ? { kind: 'done' } : { kind: 'none' }
 
-  // the heat the judges are actually scoring (can differ from the timetable if we're running late)
-  const floor = data?.heats.find((h) => h.id === data.heat_id) ?? null
-  const behind = !at && floor && onNow && floor.id !== onNow.heat.id && (floor.start_time ?? '') < (onNow.heat.start_time ?? '')
+  // how late we're running: the most recent heat the judges started vs its printed time
+  const lastLive = line.filter((t) => t.live).at(-1)
+  const lateMin = lastLive && lastLive.start != null && lastLive.sched != null ? Math.round((lastLive.start - lastLive.sched) / 60) : 0
 
   // rolling list: keep the current heat near the top
   const listRef = useRef<HTMLOListElement>(null)
@@ -89,14 +107,16 @@ export function DjScreen({ at }: { at: string | null }) {
               <h1>Event {cue.t.heat.workout_number} · Heat {cue.t.heat.number}</h1>
               <p className="dj-sub">{cue.t.heat.workout_name} · {divisions(cue.t.heat)}</p>
               <Ring left={cue.left} total={(cue.t.end ?? 0) - (cue.t.start ?? 0)} label="left" hot={cue.kind === 'final'} />
-              <p className="dj-sub">Ends {clockText(cue.t.end!)}{next ? ` · next heat ${hhmm(next.heat.start_time)}` : ''}</p>
+              <p className="dj-sub">Ends {clockText(cue.t.end!)}{next ? ` · next heat ${next.start != null ? clockText(next.start) : hhmm(next.heat.start_time)}` : ''}</p>
             </>
           )}
 
           {cue.kind === 'go' && (
             <>
-              <span className="dj-label">Heat starting</span>
-              <div className="dj-num" key={cue.in}>{cue.in > 0 ? cue.in : 'GO'}</div>
+              <span className="dj-label">{cue.t.waiting ? '⚡ Heat about to start: build it up' : 'Heat starting'}</span>
+              {cue.t.waiting
+                ? <h1>Waiting for the judges to start</h1>
+                : <div className="dj-num" key={cue.in}>{cue.in > 0 ? cue.in : 'GO'}</div>}
               <p className="dj-sub">Event {cue.t.heat.workout_number} · Heat {cue.t.heat.number} · {divisions(cue.t.heat)}</p>
             </>
           )}
@@ -107,20 +127,20 @@ export function DjScreen({ at }: { at: string | null }) {
               <h1>Event {cue.t.heat.workout_number} · Heat {cue.t.heat.number}</h1>
               <p className="dj-sub">{cue.t.heat.workout_name} · {divisions(cue.t.heat)}</p>
               <div className="dj-count mono">{countdown(cue.in)}</div>
-              <p className="dj-sub">starts {hhmm(cue.t.heat.start_time)}</p>
+              <p className="dj-sub">starts {cue.t.start != null ? clockText(cue.t.start) : hhmm(cue.t.heat.start_time)}{cue.t.start != null && cue.t.sched != null && cue.t.start - cue.t.sched >= 60 ? ` (was ${hhmm(cue.t.heat.start_time)})` : ''}</p>
             </>
           )}
         </div>
 
         <div className="dj-side">
           <div className="dj-side-head"><b>Running order</b><span>{done}/{line.length} heats done</span></div>
-          {behind && floor && <div className="dj-floor">Floor is on Event {floor.workout_number} · Heat {floor.number}: running behind</div>}
+          {lateMin >= 1 && <div className="dj-floor">Running {lateMin} min behind: times below follow the judges</div>}
           <ol ref={listRef} className="dj-list">
             {rows.map((r) => r.type === 'gap' ? (
               <li key={r.key} className="gap"><span className="t mono">{clockText(r.from)}</span><span>Break · {r.minutes} min</span></li>
             ) : (
               <li key={r.t.heat.id} data-id={r.t.heat.id} className={r.t.state}>
-                <span className="t mono">{hhmm(r.t.heat.start_time)}</span>
+                <span className="t mono">{r.t.start != null ? clockText(r.t.start) : hhmm(r.t.heat.start_time)}</span>
                 <span className="w"><b>Event {r.t.heat.workout_number} · Heat {r.t.heat.number}</b><small>{divisions(r.t.heat)}</small></span>
                 <span className="s">{r.t.state === 'now' ? 'On now' : r.t.state === 'next' ? 'Next' : r.t.state === 'done' ? '✓' : ''}</span>
               </li>
