@@ -1121,8 +1121,11 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-v
 /* Head judge heat list: lane colour by state + judge name tag (7 Nov 2026) */
 .j-lane.hj { position: relative; }
 .j-lane.hj::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 0 3px 3px 0; background: var(--j-3); }
-.j-lane.hj .main { gap: 3px; }
-.hj-judge { justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.82rem; font-weight: 700; padding: 3px 9px 2px; border-radius: 999px; }
+.j-lane.hj { padding-top: 10px; padding-bottom: 10px; min-height: 52px; }
+.j-lane.hj .main { gap: 2px; }
+.hj-sub { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hj-sub small { min-width: 0; }
+.hj-judge { flex: none; max-width: 62%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.76rem; font-weight: 700; padding: 1px 8px 0; border-radius: 6px; line-height: 1.5; }
 .j-lane.hj.free::before { background: #ef4444; }
 .j-lane.hj.free .no { background: rgba(239, 68, 68, 0.18); color: #ff8a8a; }
 .j-lane.hj.free .hj-judge { background: rgba(239, 68, 68, 0.14); color: #ff8a8a; }

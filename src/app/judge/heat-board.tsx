@@ -101,8 +101,9 @@ export function HeatBoard({ heats, workouts, judgeId, head, onTake }: {
                     <span className="no">{l.lane}</span>
                     <span className="main">
                       <b>{l.team_name}</b>
-                      <small>{l.division}</small>
-                      {head && <span className="hj-judge">{l.judge_id ? `👤 ${l.judge_name ?? 'Judge'}` : 'No judge yet'}</span>}
+                      {head
+                        ? <span className="hj-sub"><span className="hj-judge">{l.judge_id ? (l.judge_name ?? 'Judge') : 'No judge'}</span><small>{l.division}</small></span>
+                        : <small>{l.division}</small>}
                     </span>
                     <span className={`j-status ${status[1]}`}>{busy === l.lane_assignment_id ? 'Opening…' : status[0]}</span>
                     {!locked && <span className="chev" aria-hidden>›</span>}
