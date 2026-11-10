@@ -6,7 +6,7 @@ import { BoardTable } from '@/components/LeaderboardTabs'
 import type { DivisionBoard } from '@/lib/public-data'
 
 /** Big-screen leaderboard: shows each division with released results in turn. */
-export function TvRotator({ boards, lowerWins }: { boards: DivisionBoard[]; lowerWins: boolean }) {
+export function TvRotator({ boards, lowerWins, site }: { boards: DivisionBoard[]; lowerWins: boolean; site: string }) {
   const live = boards.filter((b) => b.events.length > 0)
   const list = live.length ? live : boards
   const [i, setI] = useState(0)
@@ -31,7 +31,7 @@ export function TvRotator({ boards, lowerWins }: { boards: DivisionBoard[]; lowe
         <BoardTable board={board} lowerWins={lowerWins} limit={12} />
       )}
       <footer className="spread small subtle" style={{ fontSize: '1vw' }}>
-        <span>leaders.northernwarrior.co.uk</span>
+        <span>{site}</span>
         <span>{list.map((b, k) => <span key={b.division.id} style={{ marginLeft: 16, color: k === i % list.length ? 'var(--gold-hi)' : undefined }}>{b.division.name}</span>)}</span>
       </footer>
     </main>

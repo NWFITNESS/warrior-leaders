@@ -1,4 +1,4 @@
-import { eventDates, requireEvent } from '@/lib/event'
+import { eventDates, requireEvent, GYM_SLUG } from '@/lib/event'
 import { signOut } from '../login/actions'
 import { AdminMobileBar, AdminNav } from './nav'
 import { Logo } from '@/components/Logo'
@@ -22,13 +22,13 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         <div className="admin-foot">
           <span>{actor}</span>
           <form action={signOut}><button className="linkbtn">Sign out</button></form>
-          <a href="/" target="_blank" rel="noreferrer">View public site ↗</a>
+          <a href={`/${GYM_SLUG}/${event.slug}`} target="_blank" rel="noreferrer">View public site ↗</a>
         </div>
       </aside>
       <AdminMobileBar>
         <a href="/admin/events"><b>{event.name}</b> · Switch event</a>
         <span>{actor}</span>
-        <a href="/" target="_blank" rel="noreferrer">View public site ↗</a>
+        <a href={`/${GYM_SLUG}/${event.slug}`} target="_blank" rel="noreferrer">View public site ↗</a>
         <form action={signOut}><button className="linkbtn">Sign out</button></form>
       </AdminMobileBar>
       <main className="admin-main">{children}</main>

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireEvent } from '@/lib/event'
+import { requireEvent, GYM_SLUG } from '@/lib/event'
 import { buildEvents, divisionStandings, isReleased, type RankScore, type RankWorkout } from '@/lib/ranking'
 import { lowerTotalWins } from '@/lib/points'
 import type { Sex } from '@/lib/scoring'
@@ -38,7 +38,7 @@ export default async function AdminLeaderboard({ searchParams }: { searchParams:
         <div className="row">
           <Link href="/admin/leaderboard?view=preview" className={`btn btn-sm ${view === 'public' ? 'btn-ghost' : ''}`}>All verified</Link>
           <Link href="/admin/leaderboard?view=public" className={`btn btn-sm ${view === 'public' ? '' : 'btn-ghost'}`}>Public view</Link>
-          <a href="/tv" target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Open TV screen ↗</a>
+          <a href={`/${GYM_SLUG}/${event.slug}/tv`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Open TV screen ↗</a>
         </div>
       </div>
       {events.length === 0 && <div className="empty">No scored workouts yet.</div>}

@@ -1,14 +1,10 @@
-import type { Metadata, Viewport } from 'next'
-import { parseAt } from '@/lib/live'
-import { DjScreen } from './dj-screen'
+import { redirect } from 'next/navigation'
+import { currentEventBase } from '@/lib/public-event'
 
-export const metadata: Metadata = { title: 'DJ', robots: { index: false }, manifest: '/dj.webmanifest', appleWebApp: { capable: true, title: 'WL DJ', statusBarStyle: 'black-translucent' } }
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#0a0a0a' }
+export const dynamic = 'force-dynamic'
 
-// The DJ's iPad: where we are in the day. Runs on the heat times (Admin → Heats), like the TV.
-//   /dj            live
-//   /dj?at=09:25   rehearsal from that time
-export default async function DjPage({ searchParams }: { searchParams: Promise<{ at?: string }> }) {
-  const { at } = await searchParams
-  return <DjScreen at={parseAt(at)} />
+// Old address: the current event's /dj (query string kept, e.g. /live?view=race)
+export default async function Old({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const q = new URLSearchParams(Object.entries(await searchParams).flatMap(([k, v]) => (Array.isArray(v) ? v.map((x) => [k, x]) : v != null ? [[k, v]] : [])))
+  redirect(`${await currentEventBase()}/dj${q.size ? `?${q}` : ''}`)
 }

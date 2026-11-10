@@ -1,18 +1,10 @@
-import { AutoRefresh } from '@/components/AutoRefresh'
-import { computeBoards, getBoardData } from '@/lib/public-data'
-import { lowerTotalWins } from '@/lib/points'
-import { TvRotator } from './tv-rotator'
+import { redirect } from 'next/navigation'
+import { currentEventBase } from '@/lib/public-event'
 
-export const revalidate = 15
-export const metadata = { title: 'TV' }
+export const dynamic = 'force-dynamic'
 
-export default async function TvPage() {
-  const board = await getBoardData()
-  const boards = board ? computeBoards(board) : []
-  return (
-    <>
-      <AutoRefresh seconds={20} />
-      <TvRotator boards={boards} lowerWins={board ? lowerTotalWins(board.settings.points_method) : true} />
-    </>
-  )
+// Old address: the current event's /tv (query string kept, e.g. /live?view=race)
+export default async function Old({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const q = new URLSearchParams(Object.entries(await searchParams).flatMap(([k, v]) => (Array.isArray(v) ? v.map((x) => [k, x]) : v != null ? [[k, v]] : [])))
+  redirect(`${await currentEventBase()}/tv${q.size ? `?${q}` : ''}`)
 }

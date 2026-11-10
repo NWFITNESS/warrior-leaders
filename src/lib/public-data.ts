@@ -14,8 +14,8 @@ function anon() {
   })
 }
 
-export async function getPublicSettings() {
-  const { data } = await anon().rpc('wl_public_settings')
+export async function getPublicSettings(eventId?: string) {
+  const { data } = await anon().rpc('wl_public_settings', eventId ? { p_event: eventId } : {})
   return data as { name: string; event_date: string; venue: string } | null
 }
 
@@ -27,8 +27,8 @@ export interface PublicTeam {
   athletes: { first_name: string; last_name: string; position: number }[]
 }
 
-export async function getPublicTeams() {
-  const { data } = await anon().rpc('wl_public_teams')
+export async function getPublicTeams(eventId?: string) {
+  const { data } = await anon().rpc('wl_public_teams', eventId ? { p_event: eventId } : {})
   const result = (data ?? { divisions: [], teams: [] }) as { divisions: { id: string; name: string }[]; teams: PublicTeam[] }
   return result
 }
@@ -78,8 +78,8 @@ export function eventResults(board: PublicBoard, workoutId: string) {
 }
 export type EventDivisionResults = ReturnType<typeof eventResults>[number]
 
-export async function getBoardData() {
-  const { data } = await anon().rpc('wl_public_leaderboard')
+export async function getBoardData(eventId?: string) {
+  const { data } = await anon().rpc('wl_public_leaderboard', eventId ? { p_event: eventId } : {})
   return data as PublicBoard | null
 }
 
@@ -112,7 +112,35 @@ export interface ScheduleHeat {
   workout_id: string; workout_number: number; workout_name: string; heat_id: string; heat_number: number; start_time: string | null
   lanes: { lane: number; team_id: string; team_name: string; division: string }[]
 }
-export async function getSchedule() {
-  const { data } = await anon().rpc('wl_public_schedule')
+export async function getSchedule(eventId?: string) {
+  const { data } = await anon().rpc('wl_public_schedule', eventId ? { p_event: eventId } : {})
   return (data ?? []) as ScheduleHeat[]
+}
+
+// ── Events and gyms by their web addresses (/{gym}/{event}) ────────────────────
+export interface PublicEvent {
+  id: string; slug: string; name: string; short_name: string; venue: string
+  start_date: string | null; end_date: string | null; status: 'draft' | 'live' | 'finished' | 'archived'
+  gym: { name: string; slug: string; logo_url: string | null }
+  is_current: boolean
+}
+export async function getPublicEvent(gym: string, event: string) {
+  const { data } = await anon().rpc('wl_public_event', { p_gym: gym, p_event: event })
+  return (data ?? null) as PublicEvent | null
+}
+
+export interface PublicGym {
+  name: string; slug: string; logo_url: string | null; current: string | null
+  events: { slug: string; name: string; short_name: string; venue: string; start_date: string | null; end_date: string | null; status: string }[]
+}
+export async function getPublicGym(gym: string) {
+  const { data } = await anon().rpc('wl_public_gym', { p_gym: gym })
+  return (data ?? null) as PublicGym | null
+}
+
+/** "/{gym}/{event}" for a team (old team links), or null */
+export async function getTeamEventPath(teamId: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(teamId)) return null
+  const { data } = await anon().rpc('wl_public_team_path', { p_team: teamId })
+  return (data ?? null) as string | null
 }

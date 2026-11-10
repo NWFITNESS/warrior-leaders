@@ -1,19 +1,10 @@
-import QRCode from 'qrcode'
-import { parseAt } from '@/lib/live'
-import { LiveScreen } from './live-screen'
+import { redirect } from 'next/navigation'
+import { currentEventBase } from '@/lib/public-event'
 
-export const metadata = { title: 'Live' }
+export const dynamic = 'force-dynamic'
 
-// Big screen: dog race of the heat on the floor (left) + heat times (right).
-//   /live              split screen
-//   /live?view=race    race only
-//   /live?view=heats   heat times only
-//   &heat=<id>         show a particular heat instead of following the judges
-//   &at=09:25          rehearsal: heat times run from that time instead of now
-export default async function LivePage({ searchParams }: { searchParams: Promise<{ view?: string; heat?: string; at?: string }> }) {
-  const { view, heat, at } = await searchParams
-  const mode = view === 'race' || view === 'heats' ? view : 'split'
-  // scan-for-scores code on the bottom bar (black on white so any phone reads it off a TV)
-  const qr = await QRCode.toString('https://leaders.northernwarrior.co.uk', { type: 'svg', margin: 1, errorCorrectionLevel: 'M' })
-  return <LiveScreen mode={mode} heatId={heat ?? null} at={parseAt(at)} qr={qr} />
+// Old address: the current event's /live (query string kept, e.g. /live?view=race)
+export default async function Old({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const q = new URLSearchParams(Object.entries(await searchParams).flatMap(([k, v]) => (Array.isArray(v) ? v.map((x) => [k, x]) : v != null ? [[k, v]] : [])))
+  redirect(`${await currentEventBase()}/live${q.size ? `?${q}` : ''}`)
 }

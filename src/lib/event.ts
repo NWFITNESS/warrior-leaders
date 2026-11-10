@@ -26,10 +26,4 @@ export const requireEvent = cache(async () => {
   return { supabase, actor, event }
 })
 
-/** "Sat 7 Nov 2026" or "Sat 6 – Sun 7 Jun 2027" */
-export function eventDates(start: string | null, end: string | null) {
-  if (!start) return ''
-  const d = (s: string, o: Intl.DateTimeFormatOptions) => new Date(`${s}T12:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'Europe/London', ...o })
-  if (!end || end === start) return d(start, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-  return `${d(start, { weekday: 'short', day: 'numeric', ...(start.slice(0, 7) === end.slice(0, 7) ? {} : { month: 'short' }) })} – ${d(end, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`
-}
+export { eventDates } from '@/lib/dates'

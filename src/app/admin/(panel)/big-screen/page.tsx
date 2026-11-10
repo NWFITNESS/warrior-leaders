@@ -1,4 +1,4 @@
-import { requireEvent } from '@/lib/event'
+import { requireEvent, GYM_SLUG } from '@/lib/event'
 import { withDefaults, type LivePromo } from '@/lib/live-promo'
 import { PromoEditor } from './promo-editor'
 
@@ -20,8 +20,8 @@ export default async function BigScreenPage() {
           </p>
         </div>
         <div className="row">
-          <a href="/live" target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Open the TV screen ↗</a>
-          <a href="/dj" target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">DJ iPad view ↗</a>
+          <a href={`/${GYM_SLUG}/${event.slug}/live`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">Open the TV screen ↗</a>
+          <a href={`/${GYM_SLUG}/${event.slug}/dj`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">DJ iPad view ↗</a>
           <a href="/admin/heats" className="btn btn-ghost btn-sm">Pick the heat shown</a>
         </div>
       </div>

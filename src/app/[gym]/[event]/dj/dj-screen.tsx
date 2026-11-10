@@ -29,28 +29,28 @@ function useWakeLock() {
 }
 
 /** When the judges actually started each heat (heat id → epoch ms), so the DJ clock runs live. */
-function useHeatStarts(enabled: boolean) {
+function useHeatStarts(enabled: boolean, eventId: string) {
   const [starts, setStarts] = useState<Record<string, number> | null>(null)
   useEffect(() => {
     if (!enabled) return
     let alive = true
     const load = async () => {
-      const { data, error } = await db().rpc('wl_public_heat_starts')
+      const { data, error } = await db().rpc('wl_public_heat_starts', { p_event: eventId })
       if (alive && !error && data) setStarts(data as Record<string, number>)
     }
     void load()
     const id = window.setInterval(load, 3000)
     return () => { alive = false; window.clearInterval(id) }
-  }, [enabled])
+  }, [enabled, eventId])
   return starts
 }
 
-export function DjScreen({ at }: { at: string | null }) {
+export function DjScreen({ eventId, at }: { eventId: string; at: string | null }) {
   useWakeLock()
-  const { data, offline, offset } = useLive(null, null)
-  const promo = usePromo()
+  const { data, offline, offset } = useLive(null, null, eventId)
+  const promo = usePromo(eventId)
   const now = useClock(offset, at)
-  const starts = useHeatStarts(!at) // rehearsal (?at=) stays on the printed times
+  const starts = useHeatStarts(!at, eventId) // rehearsal (?at=) stays on the printed times
   const line = useMemo(() => (data ? heatTimeline(data.heats, now, starts) : []), [data, now, starts])
 
   const onNow = line.find((t) => t.state === 'now')

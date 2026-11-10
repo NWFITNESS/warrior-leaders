@@ -20,14 +20,14 @@ export function db() {
   return client
 }
 
-export function useLive(heatId: string | null, fallback: string | null) {
+export function useLive(heatId: string | null, fallback: string | null, eventId: string) {
   const [data, setData] = useState<LiveData | null>(null)
   const [offline, setOffline] = useState(false)
   const [offset, setOffset] = useState(0) // server clock − this screen's clock
   useEffect(() => {
     let alive = true
     const load = async () => {
-      const { data: d, error } = await db().rpc('wl_public_live', { p_heat: heatId, p_fallback: fallback })
+      const { data: d, error } = await db().rpc('wl_public_live', { p_heat: heatId, p_fallback: fallback, p_event: eventId })
       if (!alive) return
       if (error || !d) { setOffline(true); return }
       setOffline(false)
@@ -37,23 +37,23 @@ export function useLive(heatId: string | null, fallback: string | null) {
     void load()
     const id = window.setInterval(load, POLL_MS)
     return () => { alive = false; window.clearInterval(id) }
-  }, [heatId, fallback])
+  }, [heatId, fallback, eventId])
   return { data, offline, offset }
 }
 
 /** Big-screen extras (DJ, slides, sponsors) from Admin → Big screen; re-read every minute so edits show up on the day. */
-export function usePromo() {
+export function usePromo(eventId: string) {
   const [promo, setPromo] = useState<LivePromo>(() => withDefaults(null))
   useEffect(() => {
     let alive = true
     const load = async () => {
-      const { data, error } = await db().rpc('wl_public_promo')
+      const { data, error } = await db().rpc('wl_public_promo', { p_event: eventId })
       if (alive && !error) setPromo(withDefaults(data as Partial<LivePromo>))
     }
     void load()
     const id = window.setInterval(load, 60_000)
     return () => { alive = false; window.clearInterval(id) }
-  }, [])
+  }, [eventId])
   return promo
 }
 
@@ -75,11 +75,11 @@ export function useClock(offset: number, at: string | null) {
 const levelOf = (heat: LiveHeat) => [...new Set(heat.lanes.map((l) => l.level))]
 const divisionsOf = (heat: LiveHeat) => [...new Set(heat.lanes.map((l) => l.division))]
 
-export function LiveScreen({ mode, heatId, at, qr = null }: { mode: 'split' | 'race' | 'heats'; heatId: string | null; at: string | null; qr?: string | null }) {
+export function LiveScreen({ eventId, mode, heatId, at, qr = null }: { eventId: string; mode: 'split' | 'race' | 'heats'; heatId: string | null; at: string | null; qr?: string | null }) {
   // the heat that's on now (or next, or the last one) by the clock: the race shows it when nobody is scoring
   const [fallback, setFallback] = useState<string | null>(null)
-  const { data, offline, offset } = useLive(heatId, fallback)
-  const promo = usePromo()
+  const { data, offline, offset } = useLive(heatId, fallback, eventId)
+  const promo = usePromo(eventId)
   const now = useClock(offset, at)
   const line = data ? heatTimeline(data.heats, now) : []
   const byClock = (line.find((t) => t.state === 'now') ?? line.find((t) => t.state === 'next') ?? line.filter((t) => t.state === 'done').at(-1))?.heat.id ?? null

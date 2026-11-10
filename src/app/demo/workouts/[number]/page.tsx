@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { PublicNav } from '@/components/PublicNav'
 import { Standards } from '@/components/Standards'
 import { WorkoutBreakdown } from '@/components/WorkoutBreakdown'
-import { EventResults } from '@/app/workouts/[number]/event-results'
+import { EventResults } from '@/app/[gym]/[event]/workouts/[number]/event-results'
 import { demoBoard } from '@/lib/demo-board'
 import { eventResults } from '@/lib/public-data'
 

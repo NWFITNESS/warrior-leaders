@@ -7,7 +7,7 @@ import { ScoreLines } from './ScoreLines'
 
 const ordinal = (n: number) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]) }
 
-export function LeaderboardTabs({ boards, lowerWins, linkTeams = true }: { boards: DivisionBoard[]; lowerWins: boolean; linkTeams?: boolean }) {
+export function LeaderboardTabs({ boards, lowerWins, linkTeams = true, base = '' }: { boards: DivisionBoard[]; lowerWins: boolean; linkTeams?: boolean; base?: string }) {
   const [div, setDiv] = useState(boards[0]?.division.id)
   const [pinned, setPinned] = useState<string | null>(null)
 
@@ -35,7 +35,7 @@ export function LeaderboardTabs({ boards, lowerWins, linkTeams = true }: { board
       {board.events.length === 0 && (
         <p className="notice">No results released for {board.division.name} yet. Every team starts on 0 points; places appear as each workout is released.</p>
       )}
-      <BoardTable board={board} pinned={pinned} lowerWins={lowerWins} linkTeams={linkTeams} />
+      <BoardTable board={board} pinned={pinned} lowerWins={lowerWins} linkTeams={linkTeams} base={base} />
       <p className="small subtle">
         {lowerWins ? 'Points = finishing place in each event (1st = 1). Lowest total wins.' : 'Highest total wins.'} Tap a team to see their scores and heats.
       </p>
@@ -43,7 +43,7 @@ export function LeaderboardTabs({ boards, lowerWins, linkTeams = true }: { board
   )
 }
 
-export function BoardTable({ board, pinned, lowerWins, limit, linkTeams = true }: { board: DivisionBoard; pinned?: string | null; lowerWins: boolean; limit?: number; linkTeams?: boolean }) {
+export function BoardTable({ board, pinned, lowerWins, limit, linkTeams = true, base = '' }: { board: DivisionBoard; pinned?: string | null; lowerWins: boolean; limit?: number; linkTeams?: boolean; base?: string }) {
   const [open, setOpen] = useState<string | null>(null)
   const rows = limit ? board.rows.slice(0, limit) : board.rows
   return (
@@ -101,7 +101,7 @@ export function BoardTable({ board, pinned, lowerWins, limit, linkTeams = true }
                           })}
                         </ul>
                       )}
-                      {linkTeams && <Link href={`/teams/${r.teamId}`} className="lb-more" onClick={(ev) => ev.stopPropagation()}>Team page, heats &amp; scores →</Link>}
+                      {linkTeams && <Link href={`${base}/teams/${r.teamId}`} className="lb-more" onClick={(ev) => ev.stopPropagation()}>Team page, heats &amp; scores →</Link>}
                     </td>
                   </tr>
                 )}

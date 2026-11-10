@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireEvent } from '@/lib/event'
+import { requireEvent, GYM_SLUG } from '@/lib/event'
 import { HeatsEditor } from './heats-editor'
 import { setLiveHeat } from './actions'
 
@@ -68,10 +68,10 @@ export default async function HeatsPage({ searchParams }: { searchParams: Promis
         <div className="spread" style={{ alignItems: 'baseline' }}>
           <b>Big screen</b>
           <span className="row" style={{ gap: 12 }}>
-            <a href="/live" target="_blank" rel="noreferrer">Race + heat times ↗</a>
-            <a href="/live?view=race" target="_blank" rel="noreferrer">Race only ↗</a>
-            <a href="/tv" target="_blank" rel="noreferrer">Leaderboard ↗</a>
-            <a href="/dj" target="_blank" rel="noreferrer">DJ iPad ↗</a>
+            <a href={`/${GYM_SLUG}/${event.slug}/live`} target="_blank" rel="noreferrer">Race + heat times ↗</a>
+            <a href={`/${GYM_SLUG}/${event.slug}/live?view=race`} target="_blank" rel="noreferrer">Race only ↗</a>
+            <a href={`/${GYM_SLUG}/${event.slug}/tv`} target="_blank" rel="noreferrer">Leaderboard ↗</a>
+            <a href={`/${GYM_SLUG}/${event.slug}/dj`} target="_blank" rel="noreferrer">DJ iPad ↗</a>
             <a href="/admin/big-screen">Edit DJ, slides &amp; sponsors</a>
           </span>
         </div>
