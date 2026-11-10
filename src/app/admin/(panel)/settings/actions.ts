@@ -54,7 +54,12 @@ export async function saveSettings(_prev: { ok?: boolean; error?: string }, form
     updated_at: new Date().toISOString(),
   }
   const { error } = await supabase.from('wl_competitions').update(row).eq('id', event.id)
-  if (error) return { error: error.message.includes('wl_competitions_gym_id_slug_key') ? 'Another event already uses that web address.' : error.message }
+  if (error) {
+    if (error.message.includes('wl_competitions_gym_id_slug_key')) return { error: 'Another event already uses that web address.' }
+    if (error.message.includes('judge_code_taken')) return { error: 'Another open event (draft or live) already uses one of these judge codes. Pick different codes: each code tells the judges’ app which event they’re at.' }
+    if (error.message.includes('judge_code_clash')) return { error: 'The head judge code must be different from the judge code.' }
+    return { error: error.message }
+  }
   const { live_promo: _p, score_resets: _r, ...before } = event
   await audit(supabase, { competition_id: event.id, actor, action: 'event.update', entity: 'event', entity_id: event.id, before, after: row })
   revalidatePath('/admin', 'layout')

@@ -38,6 +38,7 @@ export interface JudgeHeat { id: string; workout_id: string; number: number; sta
 export interface JudgeWorkout { id: string; number: number; name: string; description: string | null; status: string; open_entry: boolean; parts: JudgePart[] }
 export interface Assignments {
   judge: { id: string; name: string; role: 'head' | 'lane' }
+  event?: { id: string; name: string; short_name: string; start_date: string | null; end_date: string | null; status: string }
   lanes: Lane[] // the judge's own lanes in full (head judges: every lane)
   heats?: JudgeHeat[] // every heat, with who's on each lane
   workouts?: JudgeWorkout[]
@@ -100,6 +101,14 @@ export async function listJudges(): Promise<{ id: string; name: string; role: st
   const { data, error } = await db().rpc('wl_judge_list')
   if (error) throw error
   return data ?? []
+}
+
+/** Head judges, step 1: the head judge code says which event; returns its head judges. */
+export async function headsForCode(code: string): Promise<{ event: { name: string; short_name: string }; judges: { id: string; name: string }[] } | { error: string }> {
+  const { data, error } = await db().rpc('wl_judge_heads', { p_code: code })
+  if (error) return { error: 'offline' }
+  if (data?.error) return { error: data.error }
+  return data
 }
 
 export async function login(judgeId: string, code: string): Promise<{ ok: true } | { error: string }> {

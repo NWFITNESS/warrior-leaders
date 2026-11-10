@@ -9,7 +9,6 @@ import { EVENT_COOKIE, GYM_SLUG } from '@/lib/event'
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const DATE = /^\d{4}-\d{2}-\d{2}$/
-const code = () => String(Math.floor(Math.random() * 10000)).padStart(4, '0')
 
 async function gym() {
   const { supabase, actor } = await requireStaff()
@@ -46,6 +45,12 @@ export async function makePublicEvent(formData: FormData) {
   revalidatePath('/', 'layout')
 }
 
+function friendly(msg: string) {
+  if (msg.includes('wl_competitions_gym_id_slug_key')) return 'Another event already uses that web address.'
+  if (msg.includes('judge_code_taken')) return 'Another open event is using one of these judge codes. Try again.'
+  return msg
+}
+
 export async function createEvent(_prev: { error?: string }, formData: FormData): Promise<{ error?: string }> {
   const { supabase, actor, gym: g } = await gym()
   const name = String(formData.get('name') ?? '').trim()
@@ -64,16 +69,17 @@ export async function createEvent(_prev: { error?: string }, formData: FormData)
       .select('short_name, venue, points_method, custom_points, lanes_per_heat, overall_tiebreak, live_promo').eq('id', copyFrom).eq('gym_id', g.id).maybeSingle()
     if (src) base = src
   }
-  let judge = code()
-  const head = code()
-  if (judge === head) judge = String((Number(head) + 1) % 10000).padStart(4, '0')
+  // codes no other open event uses: a judge's code tells the app which event they're at
+  const { data: head, error: hErr } = await supabase.rpc('wl_free_judge_code')
+  const { data: judge, error: jErr } = await supabase.rpc('wl_free_judge_code', { p_not: head })
+  if (hErr || jErr) return { error: (hErr ?? jErr)!.message }
   const { data: ev, error } = await supabase.from('wl_competitions').insert({
     ...base,
     gym_id: g.id, name, slug, start_date: start, end_date: end, status: 'draft',
     venue: String(formData.get('venue') ?? '').trim() || (base.venue as string) || '',
     judge_code: judge, head_judge_code: head,
   }).select('id').single()
-  if (error) return { error: error.message.includes('wl_competitions_gym_id_slug_key') ? 'Another event already uses that web address.' : error.message }
+  if (error) return { error: friendly(error.message) }
 
   if (copyFrom && (formData.get('copy_divisions') || formData.get('copy_workouts'))) {
     const { error: cErr } = await supabase.rpc('wl_admin_copy_event', {

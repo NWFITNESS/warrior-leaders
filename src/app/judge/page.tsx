@@ -91,7 +91,7 @@ export default function JudgePage() {
               <span className="j-brand"><Logo width={40} variant="mark" /></span>
             )}
             <span className="j-title">
-              {lane ? (lane.workout.open_entry ? `Event ${lane.workout.number} · Side event` : `Lane ${lane.lane} · Heat ${lane.heat_number}`) : <>{data.judge.name}{head && <small>Head judge</small>}</>}
+              {lane ? (lane.workout.open_entry ? `Event ${lane.workout.number} · Side event` : `Lane ${lane.lane} · Heat ${lane.heat_number}`) : <>{data.judge.name}{(head || data.event) && <small>{[head && 'Head judge', data.event?.name].filter(Boolean).join(' · ')}</small>}</>}
             </span>
             <SyncBadge offline={offline} />
           </header>
