@@ -1,12 +1,12 @@
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { TEMPLATE_HEADERS } from '@/lib/csv'
 import { ImportForm } from './import-form'
 
 export const metadata = { title: 'Import teams' }
 
 export default async function ImportPage() {
-  const { supabase } = await requireStaff()
-  const { data: divisions } = await supabase.from('wl_divisions').select('name').order('sort_order')
+  const { supabase, event } = await requireEvent()
+  const { data: divisions } = await supabase.from('wl_divisions').select('name').eq('competition_id', event.id).order('sort_order')
   return (
     <>
       <div className="stack-sm">

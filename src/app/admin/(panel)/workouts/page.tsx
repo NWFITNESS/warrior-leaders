@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { formatCap, partTitle, partTitleOr, scoreTypeLabel, type Workout } from '@/lib/types'
 import { createWorkout } from './actions'
 
@@ -8,10 +8,10 @@ export const metadata = { title: 'Workouts' }
 const STATUS: Record<Workout['status'], string> = { draft: 'pill-dim', ready: 'pill-ok', live: 'pill-warn', complete: 'pill-gold' }
 
 export default async function WorkoutsPage() {
-  const { supabase } = await requireStaff()
+  const { supabase, event } = await requireEvent()
   const { data: workouts } = await supabase
     .from('wl_workouts')
-    .select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(id))')
+    .select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(id))').eq('competition_id', event.id)
     .order('number')
     .returns<Workout[]>()
 

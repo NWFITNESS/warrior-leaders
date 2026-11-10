@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { buildEvents, type RankWorkout } from '@/lib/ranking'
 import type { Sex } from '@/lib/scoring'
 import type { WorkoutPart } from '@/lib/types'
@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function ScoresPage({ searchParams }: { searchParams: Promise<{ workout?: string }> }) {
   const { workout: workoutParam } = await searchParams
-  const { supabase } = await requireStaff()
-  const { data: workouts } = await supabase.from('wl_workouts').select('id, number, name, combine_parts, open_entry').order('number')
+  const { supabase, event } = await requireEvent()
+  const { data: workouts } = await supabase.from('wl_workouts').select('id, number, name, combine_parts, open_entry').eq('competition_id', event.id).order('number')
   if (!workouts?.length) {
     return (<><div className="stack-sm"><span className="eyebrow">Results</span><h1>Scores</h1></div><div className="empty">No workouts yet.</div></>)
   }
@@ -22,8 +22,8 @@ export default async function ScoresPage({ searchParams }: { searchParams: Promi
     supabase.from('wl_lane_assignments')
       .select('lane, team_id, heat:wl_heats!inner(number, workout_id), judge:wl_judges(name)')
       .eq('heat.workout_id', workout.id),
-    supabase.from('wl_divisions').select('id, name, sex, level').order('sort_order'),
-    supabase.from('wl_teams').select('id, name, division_id').order('name'),
+    supabase.from('wl_divisions').select('id, name, sex, level').eq('competition_id', event.id).order('sort_order'),
+    supabase.from('wl_teams').select('id, name, division_id').eq('competition_id', event.id).order('name'),
   ])
   const partIds = (parts ?? []).map((p) => p.id)
   const [{ data: scores }, { data: releases }] = await Promise.all([

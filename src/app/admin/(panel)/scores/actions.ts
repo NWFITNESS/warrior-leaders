@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { audit } from '@/lib/audit'
 import { autoTiebreak, computeScore, entriesFromAdmin, parseRoundInput, type AdminInput, type Sex } from '@/lib/scoring'
 import { resolvePart, type WorkoutPart } from '@/lib/types'
@@ -18,7 +18,7 @@ function refresh() {
 }
 
 export async function setStatus(scoreIds: string[], status: 'verified' | 'submitted' | 'rejected', reason?: string): Promise<Result> {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   if (!scoreIds.length) return { ok: true }
   if (status === 'rejected' && !reason?.trim()) return { error: 'Give a reason for rejecting the score.' }
   const { data: before } = await supabase.from('wl_scores').select('id, status, value, part_id, team_id').in('id', scoreIds)
@@ -32,7 +32,7 @@ export async function setStatus(scoreIds: string[], status: 'verified' | 'submit
     updated_at: new Date().toISOString(),
   }).in('id', scoreIds)
   if (error) return { error: error.message }
-  await audit(supabase, { actor, action: `score.${status}`, entity: 'score', entity_id: scoreIds.join(','), before, reason })
+  await audit(supabase, { competition_id: event.id, actor, action: `score.${status}`, entity: 'score', entity_id: scoreIds.join(','), before, reason })
   refresh()
   return { ok: true }
 }
@@ -40,12 +40,12 @@ export async function setStatus(scoreIds: string[], status: 'verified' | 'submit
 export async function saveAdminScore(args: {
   partId: string; teamId: string; input: AdminInput; tiebreak: string; reason: string; source: 'admin' | 'paper'
 }): Promise<Result> {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   if (!args.reason.trim()) return { error: args.source === 'paper' ? 'Say where the score came from, e.g. “Paper sheet, lane 3”.' : 'Give a reason for the change.' }
 
   const [{ data: part }, { data: team }, { data: existing }] = await Promise.all([
     supabase.from('wl_workout_parts').select('*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*)').eq('id', args.partId).single(),
-    supabase.from('wl_teams').select('id, name, division:wl_divisions(sex, level)').eq('id', args.teamId).single(),
+    supabase.from('wl_teams').select('id, name, division:wl_divisions(sex, level)').eq('competition_id', event.id).eq('id', args.teamId).single(),
     supabase.from('wl_scores').select('*').eq('part_id', args.partId).eq('team_id', args.teamId).maybeSingle(),
   ])
   if (!part || !team) return { error: 'Workout part or team not found.' }
@@ -78,7 +78,7 @@ export async function saveAdminScore(args: {
   }
   const { error } = await supabase.from('wl_scores').upsert(row, { onConflict: 'part_id,team_id' })
   if (error) return { error: error.message }
-  await audit(supabase, {
+  await audit(supabase, { competition_id: event.id,
     actor, action: existing ? 'score.edit' : `score.${args.source}`, entity: 'score', entity_id: `${args.partId}:${args.teamId}`,
     before: existing ? { status: existing.status, value: existing.value, entries: existing.entries, source: existing.source } : null,
     after: { value: result.value, display: result.display, input: args.input, tiebreak }, reason: args.reason,
@@ -88,12 +88,12 @@ export async function saveAdminScore(args: {
 }
 
 export async function logAppeal(scoreId: string, description: string): Promise<Result> {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   if (!description.trim()) return { error: 'Describe the appeal.' }
   const { error } = await supabase.from('wl_appeals').insert({ score_id: scoreId, description: description.trim() })
   if (error) return { error: error.message }
   await supabase.from('wl_scores').update({ status: 'appeal', updated_at: new Date().toISOString() }).eq('id', scoreId)
-  await audit(supabase, { actor, action: 'appeal.open', entity: 'score', entity_id: scoreId, reason: description })
+  await audit(supabase, { competition_id: event.id, actor, action: 'appeal.open', entity: 'score', entity_id: scoreId, reason: description })
   refresh()
   return { ok: true }
 }
@@ -103,7 +103,7 @@ export async function resolveAppeal(args: {
   appealId: string; outcome: 'upheld' | 'rejected'; resolution: string
   correction?: { partId: string; teamId: string; input: AdminInput; tiebreak: string }
 }): Promise<Result> {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   if (!args.resolution.trim()) return { error: 'Write a short note on the decision.' }
   const { data: appeal } = await supabase.from('wl_appeals').select('*').eq('id', args.appealId).single()
   if (!appeal || appeal.status !== 'open') return { error: 'This appeal is already closed.' }
@@ -120,15 +120,15 @@ export async function resolveAppeal(args: {
     await supabase.from('wl_scores').update({ status: 'verified', verified_at: new Date().toISOString(), verified_by: actor }).eq('id', appeal.score_id)
   }
   await supabase.from('wl_appeals').update({ status: args.outcome, resolution: args.resolution.trim(), resolved_at: new Date().toISOString() }).eq('id', args.appealId)
-  await audit(supabase, { actor, action: `appeal.${args.outcome}`, entity: 'score', entity_id: appeal.score_id, reason: args.resolution })
+  await audit(supabase, { competition_id: event.id, actor, action: `appeal.${args.outcome}`, entity: 'score', entity_id: appeal.score_id, reason: args.resolution })
   refresh()
   return { ok: true }
 }
 
 export async function setRelease(partIds: string[], divisionId: string, release: boolean): Promise<Result> {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   if (release) {
-    const { data: teams } = await supabase.from('wl_teams').select('id').eq('division_id', divisionId)
+    const { data: teams } = await supabase.from('wl_teams').select('id').eq('competition_id', event.id).eq('division_id', divisionId)
     const teamIds = (teams ?? []).map((t) => t.id)
     if (teamIds.length) {
       const { data: blocking } = await supabase.from('wl_scores').select('status').in('part_id', partIds).in('team_id', teamIds).in('status', ['draft', 'submitted', 'appeal'])
@@ -143,7 +143,7 @@ export async function setRelease(partIds: string[], divisionId: string, release:
     const { error } = await supabase.from('wl_releases').delete().in('part_id', partIds).eq('division_id', divisionId)
     if (error) return { error: error.message }
   }
-  await audit(supabase, { actor, action: release ? 'results.release' : 'results.unrelease', entity: 'division', entity_id: divisionId, after: { parts: partIds } })
+  await audit(supabase, { competition_id: event.id, actor, action: release ? 'results.release' : 'results.unrelease', entity: 'division', entity_id: divisionId, after: { parts: partIds } })
   refresh()
   return { ok: true }
 }

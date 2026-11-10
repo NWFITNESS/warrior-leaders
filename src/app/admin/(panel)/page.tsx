@@ -1,19 +1,19 @@
 import Link from 'next/link'
-import { requireStaff } from '@/lib/auth'
+import { eventDates, requireEvent } from '@/lib/event'
 import type { Division, Settings } from '@/lib/types'
 
 export const metadata = { title: 'Overview' }
 
 export default async function Overview() {
-  const { supabase } = await requireStaff()
+  const { supabase, event } = await requireEvent()
   const [{ data: settings }, { data: divisions }, { data: teams }, { count: athleteCount }, { data: workouts }, { count: judgeCount }] =
     await Promise.all([
-      supabase.from('wl_competition_settings').select('*').single<Settings>(),
-      supabase.from('wl_divisions').select('*').order('sort_order').returns<Division[]>(),
-      supabase.from('wl_teams').select('id, division_id'),
-      supabase.from('wl_athletes').select('id', { count: 'exact', head: true }),
-      supabase.from('wl_workouts').select('id, workout_parts:wl_workout_parts(id, scored)'),
-      supabase.from('wl_judges').select('id', { count: 'exact', head: true }).eq('active', true),
+      Promise.resolve({ data: { name: event.short_name, competition_name: event.name, event_date: event.start_date ?? '', venue: event.venue } }),
+      supabase.from('wl_divisions').select('*').eq('competition_id', event.id).order('sort_order').returns<Division[]>(),
+      supabase.from('wl_teams').select('id, division_id').eq('competition_id', event.id),
+      supabase.from('wl_athletes').select('id, team:wl_teams!inner(competition_id)', { count: 'exact', head: true }).eq('team.competition_id', event.id),
+      supabase.from('wl_workouts').select('id, workout_parts:wl_workout_parts(id, scored)').eq('competition_id', event.id),
+      supabase.from('wl_judges').select('id', { count: 'exact', head: true }).eq('competition_id', event.id).eq('active', true),
     ])
 
   const teamCount = teams?.length ?? 0
@@ -28,7 +28,7 @@ export default async function Overview() {
     { done: teamCount > 0, label: 'Load teams and athletes', href: '/admin/teams' },
     { done: (workouts?.length ?? 0) > 0, label: 'Build the workouts', href: '/admin/workouts' },
     { done: (judgeCount ?? 0) > 0, label: 'Add judges', href: '/admin/judges' },
-    { done: !!settings, label: 'Check points method, lanes and judge code', href: '/admin/settings' },
+    { done: !!settings, label: 'Check event details, points method, lanes and judge codes', href: '/admin/settings' },
   ]
 
   return (
@@ -36,9 +36,9 @@ export default async function Overview() {
       <div className="spread">
         <div className="stack-sm">
           <span className="eyebrow">{settings?.venue ?? 'Northern Warrior'}</span>
-          <h1>{settings?.name ?? 'Warrior Leaders'}</h1>
+          <h1>{event.name}</h1>
           <p className="muted">
-            {eventDate?.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {eventDates(event.start_date, event.end_date)}
             {days != null && days >= 0 && <> · <b style={{ color: 'var(--gold-hi)' }}>{days} days to go</b></>}
           </p>
         </div>

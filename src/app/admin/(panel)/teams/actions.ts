@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { audit } from '@/lib/audit'
 import type { ImportRow } from '@/lib/csv'
 
@@ -16,16 +16,16 @@ export interface TeamInput {
 }
 
 export async function saveTeam(input: TeamInput): Promise<{ error?: string }> {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   const name = input.name.trim()
   if (!name) return { error: 'Give the team a name.' }
   const athletes = input.athletes.filter((a) => a.first_name.trim())
   if (athletes.length === 0) return { error: 'Add at least one athlete.' }
 
-  const teamRow = { name, division_id: input.division_id, bib: input.bib, notes: input.notes || null }
+  const teamRow = { name, division_id: input.division_id, bib: input.bib, notes: input.notes || null, competition_id: event.id }
   let teamId = input.id
   if (teamId) {
-    const { error } = await supabase.from('wl_teams').update(teamRow).eq('id', teamId)
+    const { error } = await supabase.from('wl_teams').update(teamRow).eq('id', teamId).eq('competition_id', event.id)
     if (error) return { error: friendly(error.message) }
   } else {
     const { data, error } = await supabase.from('wl_teams').insert(teamRow).select('id').single()
@@ -50,26 +50,26 @@ export async function saveTeam(input: TeamInput): Promise<{ error?: string }> {
   const { error: aErr } = await supabase.from('wl_athletes').upsert(rows)
   if (aErr) return { error: aErr.message }
 
-  await audit(supabase, { actor, action: input.id ? 'team.update' : 'team.create', entity: 'team', entity_id: teamId, after: { ...teamRow, athletes: rows.length } })
+  await audit(supabase, { competition_id: event.id, actor, action: input.id ? 'team.update' : 'team.create', entity: 'team', entity_id: teamId, after: { ...teamRow, athletes: rows.length } })
   revalidatePath('/admin/teams')
   revalidatePath('/teams')
   redirect('/admin/teams')
 }
 
 export async function deleteTeam(id: string) {
-  const { supabase, actor } = await requireStaff()
-  const { data: before } = await supabase.from('wl_teams').select('*, athletes:wl_athletes(*)').eq('id', id).single()
-  await supabase.from('wl_teams').delete().eq('id', id)
-  await audit(supabase, { actor, action: 'team.delete', entity: 'team', entity_id: id, before })
+  const { supabase, actor, event } = await requireEvent()
+  const { data: before } = await supabase.from('wl_teams').select('*, athletes:wl_athletes(*)').eq('competition_id', event.id).eq('id', id).single()
+  await supabase.from('wl_teams').delete().eq('id', id).eq('competition_id', event.id)
+  await audit(supabase, { competition_id: event.id, actor, action: 'team.delete', entity: 'team', entity_id: id, before })
   revalidatePath('/admin/teams')
   revalidatePath('/teams')
   redirect('/admin/teams')
 }
 
 export async function importTeams(rows: ImportRow[], mode: 'skip' | 'update'): Promise<{ created: number; updated: number; skipped: number; errors: string[] }> {
-  const { supabase, actor } = await requireStaff()
-  const { data: divisions } = await supabase.from('wl_divisions').select('id, name')
-  const { data: existing } = await supabase.from('wl_teams').select('id, name, division_id')
+  const { supabase, actor, event } = await requireEvent()
+  const { data: divisions } = await supabase.from('wl_divisions').select('id, name').eq('competition_id', event.id)
+  const { data: existing } = await supabase.from('wl_teams').select('id, name, division_id').eq('competition_id', event.id)
   const divByName = new Map((divisions ?? []).map((d) => [d.name.toLowerCase().replace(/\s+/g, ' '), d.id]))
   const result = { created: 0, updated: 0, skipped: 0, errors: [] as string[] }
 
@@ -87,7 +87,7 @@ export async function importTeams(rows: ImportRow[], mode: 'skip' | 'update'): P
       await supabase.from('wl_athletes').delete().eq('team_id', match.id)
       result.updated++
     } else {
-      const { data, error } = await supabase.from('wl_teams').insert({ name: r.team_name, division_id: divId, bib: r.bib, notes: r.notes }).select('id').single()
+      const { data, error } = await supabase.from('wl_teams').insert({ name: r.team_name, division_id: divId, bib: r.bib, notes: r.notes, competition_id: event.id }).select('id').single()
       if (error) { result.errors.push(`Line ${r.line}: ${friendly(error.message)}`); continue }
       teamId = data.id
       result.created++
@@ -97,7 +97,7 @@ export async function importTeams(rows: ImportRow[], mode: 'skip' | 'update'): P
     )
   }
 
-  await audit(supabase, { actor, action: 'team.import', entity: 'team', after: { ...result, errors: result.errors.length } })
+  await audit(supabase, { competition_id: event.id, actor, action: 'team.import', entity: 'team', after: { ...result, errors: result.errors.length } })
   revalidatePath('/admin/teams')
   revalidatePath('/teams')
   return result

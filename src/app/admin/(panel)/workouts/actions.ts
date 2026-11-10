@@ -2,18 +2,18 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { audit } from '@/lib/audit'
 import type { Workout, WorkoutPart } from '@/lib/types'
 
 export async function createWorkout() {
-  const { supabase, actor } = await requireStaff()
-  const { data: last } = await supabase.from('wl_workouts').select('number').order('number', { ascending: false }).limit(1).maybeSingle()
+  const { supabase, actor, event } = await requireEvent()
+  const { data: last } = await supabase.from('wl_workouts').select('number').eq('competition_id', event.id).order('number', { ascending: false }).limit(1).maybeSingle()
   const number = (last?.number ?? 0) + 1
-  const { data, error } = await supabase.from('wl_workouts').insert({ number, name: `Event ${number}` }).select('id').single()
+  const { data, error } = await supabase.from('wl_workouts').insert({ number, name: `Event ${number}`, competition_id: event.id }).select('id').single()
   if (error) throw new Error(error.message)
   await supabase.from('wl_workout_parts').insert({ workout_id: data.id, label: '', sort_order: 0 })
-  await audit(supabase, { actor, action: 'workout.create', entity: 'workout', entity_id: data.id })
+  await audit(supabase, { competition_id: event.id, actor, action: 'workout.create', entity: 'workout', entity_id: data.id })
   redirect(`/admin/workouts/${data.id}`)
 }
 
@@ -42,11 +42,11 @@ function tiebreakNote(p: WorkoutInput['parts'][number]) {
 }
 
 export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string; ok?: boolean }> {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   if (!input.name.trim()) return { error: 'Give the workout a name.' }
   if (input.parts.length === 0) return { error: 'A workout needs at least one part.' }
 
-  const { data: before } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('id', input.id).single()
+  const { data: before } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('competition_id', event.id).eq('id', input.id).single()
 
   const { error: wErr } = await supabase.from('wl_workouts').update({
     number: input.number,
@@ -57,7 +57,7 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
     public_from: input.public_from || null,
     status: input.status,
     updated_at: new Date().toISOString(),
-  }).eq('id', input.id)
+  }).eq('id', input.id).eq('competition_id', event.id)
   if (wErr) return { error: wErr.message }
 
   // Parts: upsert by id (ids are created in the browser so scores keep pointing at the same part),
@@ -126,34 +126,34 @@ export async function saveWorkout(input: WorkoutInput): Promise<{ error?: string
     if (mv) await supabase.from('wl_workout_parts').update({ tiebreak_movement_id: mv.id }).eq('id', p.id)
   }
 
-  await audit(supabase, { actor, action: 'workout.update', entity: 'workout', entity_id: input.id, before, after: input })
+  await audit(supabase, { competition_id: event.id, actor, action: 'workout.update', entity: 'workout', entity_id: input.id, before, after: input })
   revalidatePath('/admin/workouts')
   revalidatePath(`/admin/workouts/${input.id}`)
   return { ok: true }
 }
 
 export async function deleteWorkout(id: string) {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   const { data: parts } = await supabase.from('wl_workout_parts').select('id').eq('workout_id', id)
   const partIds = (parts ?? []).map((p) => p.id)
   const { count } = partIds.length
     ? await supabase.from('wl_scores').select('id', { count: 'exact', head: true }).in('part_id', partIds)
     : { count: 0 }
   if (count) throw new Error('This workout already has scores and can’t be deleted.')
-  const { data: before } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('id', id).single()
-  await supabase.from('wl_workouts').delete().eq('id', id)
-  await audit(supabase, { actor, action: 'workout.delete', entity: 'workout', entity_id: id, before })
+  const { data: before } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('competition_id', event.id).eq('id', id).single()
+  await supabase.from('wl_workouts').delete().eq('id', id).eq('competition_id', event.id)
+  await audit(supabase, { competition_id: event.id, actor, action: 'workout.delete', entity: 'workout', entity_id: id, before })
   revalidatePath('/admin/workouts')
   redirect('/admin/workouts')
 }
 
 export async function duplicateWorkout(id: string) {
-  const { supabase, actor } = await requireStaff()
-  const { data: src } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('id', id).single()
+  const { supabase, actor, event } = await requireEvent()
+  const { data: src } = await supabase.from('wl_workouts').select('*, workout_parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('competition_id', event.id).eq('id', id).single()
   if (!src) throw new Error('Workout not found')
-  const { data: last } = await supabase.from('wl_workouts').select('number').order('number', { ascending: false }).limit(1).single()
+  const { data: last } = await supabase.from('wl_workouts').select('number').eq('competition_id', event.id).order('number', { ascending: false }).limit(1).single()
   const { data: copy } = await supabase.from('wl_workouts')
-    .insert({ number: (last?.number ?? 0) + 1, name: `${src.name} (copy)`, description: src.description, combine_parts: src.combine_parts })
+    .insert({ number: (last?.number ?? 0) + 1, name: `${src.name} (copy)`, description: src.description, combine_parts: src.combine_parts, competition_id: event.id })
     .select('id').single()
   for (const p of src.workout_parts as (WorkoutPart & { id: string; workout_id: string })[]) {
     const { id: _pid, workout_id: _wid, part_movements, tiebreak_movement_id: tbMv, ...rest } = p
@@ -168,6 +168,6 @@ export async function duplicateWorkout(id: string) {
       if (dst) await supabase.from('wl_workout_parts').update({ tiebreak_movement_id: dst.id }).eq('id', np!.id)
     }
   }
-  await audit(supabase, { actor, action: 'workout.duplicate', entity: 'workout', entity_id: copy!.id, after: { from: id } })
+  await audit(supabase, { competition_id: event.id, actor, action: 'workout.duplicate', entity: 'workout', entity_id: copy!.id, after: { from: id } })
   redirect(`/admin/workouts/${copy!.id}`)
 }

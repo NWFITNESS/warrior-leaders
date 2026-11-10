@@ -1,12 +1,12 @@
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import type { Division } from '@/lib/types'
 import { TeamForm } from '../team-form'
 
 export const metadata = { title: 'Add team' }
 
 export default async function NewTeam() {
-  const { supabase } = await requireStaff()
-  const { data: divisions } = await supabase.from('wl_divisions').select('*').order('sort_order').returns<Division[]>()
+  const { supabase, event } = await requireEvent()
+  const { data: divisions } = await supabase.from('wl_divisions').select('*').eq('competition_id', event.id).order('sort_order').returns<Division[]>()
   return (
     <>
       <div className="stack-sm"><span className="eyebrow">Teams</span><h1>Add team</h1></div>

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { HeatsEditor } from './heats-editor'
 import { setLiveHeat } from './actions'
 
@@ -7,13 +7,13 @@ export const metadata = { title: 'Heats & lanes' }
 
 export default async function HeatsPage({ searchParams }: { searchParams: Promise<{ workout?: string }> }) {
   const { workout: workoutParam } = await searchParams
-  const { supabase } = await requireStaff()
+  const { supabase, event } = await requireEvent()
   const [{ data: workouts }, { data: settings }, { data: divisions }, { data: teams }, { data: judges }] = await Promise.all([
-    supabase.from('wl_workouts').select('id, number, name, status, description, open_entry, heat_minutes, parts:wl_workout_parts(id, label, name, sort_order, score_type, direction, time_cap_seconds, rounds, scored, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').order('number'),
-    supabase.from('wl_competition_settings').select('lanes_per_heat, live_heat_id').single(),
-    supabase.from('wl_divisions').select('id, name, sort_order, level, sex').order('sort_order'),
-    supabase.from('wl_teams').select('id, name, bib, division_id').order('name'),
-    supabase.from('wl_judges').select('id, name, role, active').eq('active', true).order('name'),
+    supabase.from('wl_workouts').select('id, number, name, status, description, open_entry, heat_minutes, parts:wl_workout_parts(id, label, name, sort_order, score_type, direction, time_cap_seconds, rounds, scored, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('competition_id', event.id).order('number'),
+    Promise.resolve({ data: { lanes_per_heat: event.lanes_per_heat, live_heat_id: event.live_heat_id } }),
+    supabase.from('wl_divisions').select('id, name, sort_order, level, sex').eq('competition_id', event.id).order('sort_order'),
+    supabase.from('wl_teams').select('id, name, bib, division_id').eq('competition_id', event.id).order('name'),
+    supabase.from('wl_judges').select('id, name, role, active').eq('competition_id', event.id).eq('active', true).order('name'),
   ])
 
   if (!workouts?.length) {
@@ -33,7 +33,7 @@ export default async function HeatsPage({ searchParams }: { searchParams: Promis
     .order('number')
 
   // every heat of every workout, for the big-screen picker
-  const { data: allHeats } = await supabase.from('wl_heats').select('id, number, start_time, workout:wl_workouts(number, name)').order('start_time', { nullsFirst: false })
+  const { data: allHeats } = await supabase.from('wl_heats').select('id, number, start_time, workout:wl_workouts!inner(number, name, competition_id)').eq('workout.competition_id', event.id).order('start_time', { nullsFirst: false })
   const pinned = settings?.live_heat_id ?? ''
 
   // other events' heat layouts, for "Copy heat layout from…"

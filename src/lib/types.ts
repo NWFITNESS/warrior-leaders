@@ -2,6 +2,32 @@ export type PointsMethod = 'placing' | 'reverse' | 'custom'
 export type ScoreType = 'for_time' | 'amrap' | 'max_reps' | 'max_load' | 'other'
 export type Direction = 'asc' | 'desc'
 
+/** An event (competition) of a gym: its details and settings. */
+export interface CompEvent {
+  id: string
+  gym_id: string
+  slug: string
+  name: string // full name, e.g. "Northern Warrior Competitions - Same-sex Pairs 2026"
+  short_name: string // shown on the public site, e.g. "Warrior Leaders"
+  start_date: string | null
+  end_date: string | null
+  status: 'draft' | 'live' | 'finished' | 'archived'
+  venue: string
+  points_method: PointsMethod
+  custom_points: number[]
+  lanes_per_heat: number
+  judge_code: string
+  head_judge_code: string
+  overall_tiebreak: string
+  live_heat_id: string | null
+  live_promo: Record<string, unknown>
+  scores_reset_at: string | null
+  score_resets: Record<string, string>
+  created_at: string
+  updated_at: string
+}
+
+/** @deprecated the old single-competition settings row; use CompEvent */
 export interface Settings {
   id: number
   name: string

@@ -1,12 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { audit } from '@/lib/audit'
 import { withDefaults, type LivePromo } from '@/lib/live-promo'
 
 export async function savePromo(input: LivePromo): Promise<{ ok?: boolean; error?: string }> {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   const promo = withDefaults({
     event_line: String(input.event_line ?? '').slice(0, 120),
     dj_label: String(input.dj_label ?? '').slice(0, 40),
@@ -15,10 +15,10 @@ export async function savePromo(input: LivePromo): Promise<{ ok?: boolean; error
     slides: (input.slides ?? []).slice(0, 40).map((s) => ({ icon: String(s.icon ?? '').slice(0, 8), title: String(s.title ?? '').slice(0, 60), text: String(s.text ?? '').slice(0, 200) })),
     sponsors: (input.sponsors ?? []).slice(0, 40).map((s) => String(s).slice(0, 60)),
   })
-  const { data: before } = await supabase.from('wl_competition_settings').select('live_promo').single()
-  const { error } = await supabase.from('wl_competition_settings').update({ live_promo: promo }).eq('id', 1)
+  const before = { live_promo: event.live_promo }
+  const { error } = await supabase.from('wl_competitions').update({ live_promo: promo, updated_at: new Date().toISOString() }).eq('id', event.id)
   if (error) return { error: error.message }
-  await audit(supabase, { actor, action: 'live.promo', entity: 'settings', entity_id: '1', before: before?.live_promo, after: promo })
+  await audit(supabase, { competition_id: event.id, actor, action: 'live.promo', entity: 'event', entity_id: event.id, before: before.live_promo, after: promo })
   revalidatePath('/admin/big-screen')
   return { ok: true }
 }

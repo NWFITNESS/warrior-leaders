@@ -1,19 +1,19 @@
-import { requireStaff } from '@/lib/auth'
-import type { Settings } from '@/lib/types'
+import { requireEvent } from '@/lib/event'
 import { SettingsForm } from './settings-form'
+import { DivisionsEditor } from './divisions-editor'
 
-export const metadata = { title: 'Settings' }
+export const metadata = { title: 'Event settings' }
 
 export default async function SettingsPage() {
-  const { supabase } = await requireStaff()
-  const { data: settings } = await supabase.from('wl_competition_settings').select('*').single<Settings>()
-  const { data: divisions } = await supabase.from('wl_divisions').select('name, teams:wl_teams(count)').order('sort_order')
-  const largest = Math.max(1, ...(divisions ?? []).map((d: { teams: { count: number }[] }) => d.teams[0]?.count ?? 0))
-  if (!settings) return <div className="notice notice-bad">Settings row missing. Run the database migration first.</div>
+  const { supabase, event } = await requireEvent()
+  const { data: divisions } = await supabase.from('wl_divisions').select('id, name, level, sex, teams:wl_teams(count)').eq('competition_id', event.id).order('sort_order')
+  const list = (divisions ?? []).map((d) => ({ id: d.id as string, name: d.name as string, level: d.level, sex: d.sex, teams: (d.teams as { count: number }[])[0]?.count ?? 0 }))
+  const largest = Math.max(1, ...list.map((d) => d.teams))
   return (
     <>
-      <div className="stack-sm"><span className="eyebrow">Competition</span><h1>Settings</h1></div>
-      <SettingsForm settings={settings} largestDivision={largest} />
+      <div className="stack-sm"><span className="eyebrow">This event</span><h1>Event settings</h1></div>
+      <SettingsForm key={event.id} settings={event} largestDivision={largest} />
+      <DivisionsEditor key={`d-${event.id}`} initial={list} />
     </>
   )
 }

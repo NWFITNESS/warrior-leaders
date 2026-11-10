@@ -1,4 +1,4 @@
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { EmailComposer } from './composer'
 import { EmailLog, type LogEntry } from './email-log'
 
@@ -8,12 +8,12 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 export default async function EmailsPage() {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   const [{ data: divisions }, { data: teams }] = await Promise.all([
-    supabase.from('wl_divisions').select('id, name').order('sort_order'),
-    supabase.from('wl_teams').select('id, name, division_id').order('name'),
+    supabase.from('wl_divisions').select('id, name').eq('competition_id', event.id).order('sort_order'),
+    supabase.from('wl_teams').select('id, name, division_id').eq('competition_id', event.id).order('name'),
   ])
-  const { data: log } = await supabase.from('wl_email_log').select('*').order('created_at', { ascending: false }).limit(50)
+  const { data: log } = await supabase.from('wl_email_log').select('*').eq('competition_id', event.id).order('created_at', { ascending: false }).limit(50)
   return (
     <>
       <div className="stack-sm">

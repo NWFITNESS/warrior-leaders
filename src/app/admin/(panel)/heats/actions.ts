@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { audit } from '@/lib/audit'
 
 export interface HeatInput {
@@ -12,7 +12,7 @@ export interface HeatInput {
 }
 
 export async function saveHeats(workoutId: string, heats: HeatInput[], heatMinutes: number | null = null): Promise<{ error?: string; ok?: boolean }> {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   // the time on the floor this layout was planned with (heat times + live screen use it)
   if (heatMinutes && heatMinutes >= 1 && heatMinutes <= 240) await supabase.from('wl_workouts').update({ heat_minutes: heatMinutes }).eq('id', workoutId)
 
@@ -54,17 +54,17 @@ export async function saveHeats(workoutId: string, heats: HeatInput[], heatMinut
     }
   }
 
-  await audit(supabase, { actor, action: 'heats.save', entity: 'workout', entity_id: workoutId, before, after: heats })
+  await audit(supabase, { competition_id: event.id, actor, action: 'heats.save', entity: 'workout', entity_id: workoutId, before, after: heats })
   revalidatePath('/admin/heats')
   return { ok: true }
 }
 
 /** Pin a heat to the /live big screen ('' = follow the judges automatically). */
 export async function setLiveHeat(formData: FormData) {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   const heat = String(formData.get('heat') ?? '') || null
-  const { error } = await supabase.from('wl_competition_settings').update({ live_heat_id: heat }).eq('id', 1)
+  const { error } = await supabase.from('wl_competitions').update({ live_heat_id: heat }).eq('id', event.id)
   if (error) throw new Error(error.message)
-  await audit(supabase, { actor, action: 'live.screen', entity: 'heat', entity_id: heat ?? undefined, after: { live_heat_id: heat } })
+  await audit(supabase, { competition_id: event.id, actor, action: 'live.screen', entity: 'heat', entity_id: heat ?? undefined, after: { live_heat_id: heat } })
   revalidatePath('/admin/heats')
 }

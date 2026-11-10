@@ -1,4 +1,4 @@
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { CheckIn, type CheckInTeam } from './check-in'
 
 export const metadata = { title: 'Check-in', manifest: '/check-in.webmanifest', appleWebApp: { capable: true, title: 'WL Check-in', statusBarStyle: 'black-translucent' as const } }
@@ -6,11 +6,11 @@ export const dynamic = 'force-dynamic'
 
 /** Morning registration on a tablet: search a team, tap each athlete as they arrive. */
 export default async function CheckInPage() {
-  const { supabase } = await requireStaff()
+  const { supabase, event } = await requireEvent()
   const [{ data: teams }, { data: lanes }, { data: settings }] = await Promise.all([
-    supabase.from('wl_teams').select('id, name, division:wl_divisions(name, level, sex, sort_order), athletes:wl_athletes(id, first_name, last_name, position, is_captain, checked_in_at)').order('name'),
+    supabase.from('wl_teams').select('id, name, division:wl_divisions(name, level, sex, sort_order), athletes:wl_athletes(id, first_name, last_name, position, is_captain, checked_in_at)').eq('competition_id', event.id).order('name'),
     supabase.from('wl_lane_assignments').select('lane, team_id, heat:wl_heats(number, start_time, workout:wl_workouts(number, name, open_entry))'),
-    supabase.from('wl_competition_settings').select('competition_name').single(),
+    Promise.resolve({ data: { competition_name: event.name } }),
   ])
 
   type Lane = { lane: number; team_id: string; heat: { number: number; start_time: string | null; workout: { number: number; name: string; open_entry: boolean } } }

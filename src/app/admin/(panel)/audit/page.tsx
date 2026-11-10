@@ -1,4 +1,4 @@
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 
 export const metadata = { title: 'Audit log' }
 export const dynamic = 'force-dynamic'
@@ -14,8 +14,8 @@ const LABELS: Record<string, string> = {
 }
 
 export default async function AuditPage() {
-  const { supabase } = await requireStaff()
-  const { data: rows } = await supabase.from('wl_audit_log').select('id, actor, action, entity, entity_id, reason, after, created_at').order('created_at', { ascending: false }).limit(300)
+  const { supabase, event } = await requireEvent()
+  const { data: rows } = await supabase.from('wl_audit_log').select('id, actor, action, entity, entity_id, reason, after, created_at').eq('competition_id', event.id).order('created_at', { ascending: false }).limit(300)
 
   return (
     <>

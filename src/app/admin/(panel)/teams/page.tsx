@@ -1,15 +1,15 @@
 import Link from 'next/link'
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import type { Division, Team } from '@/lib/types'
 
 export const metadata = { title: 'Teams' }
 
 export default async function TeamsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q = '' } = await searchParams
-  const { supabase } = await requireStaff()
+  const { supabase, event } = await requireEvent()
   const [{ data: divisions }, { data: teams }] = await Promise.all([
-    supabase.from('wl_divisions').select('*').order('sort_order').returns<Division[]>(),
-    supabase.from('wl_teams').select('*, athletes:wl_athletes(*)').order('name').returns<Team[]>(),
+    supabase.from('wl_divisions').select('*').eq('competition_id', event.id).order('sort_order').returns<Division[]>(),
+    supabase.from('wl_teams').select('*, athletes:wl_athletes(*)').eq('competition_id', event.id).order('name').returns<Team[]>(),
   ])
 
   const needle = q.trim().toLowerCase()

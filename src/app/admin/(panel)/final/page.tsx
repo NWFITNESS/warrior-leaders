@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { buildEvents, divisionStandings, type RankScore, type RankWorkout } from '@/lib/ranking'
 import type { Sex } from '@/lib/scoring'
 import type { PointsMethod } from '@/lib/types'
@@ -12,13 +12,13 @@ export const dynamic = 'force-dynamic'
  *  before the final) and lay them out as heats for the final workout. */
 export default async function FinalPage({ searchParams }: { searchParams: Promise<{ workout?: string }> }) {
   const { workout: workoutParam } = await searchParams
-  const { supabase } = await requireStaff()
+  const { supabase, event } = await requireEvent()
   const [{ data: settings }, { data: divisions }, { data: teams }, { data: workouts }, { data: scores }] = await Promise.all([
-    supabase.from('wl_competition_settings').select('points_method, custom_points, lanes_per_heat').single(),
-    supabase.from('wl_divisions').select('id, name, sex, level, sort_order').order('sort_order'),
-    supabase.from('wl_teams').select('id, name, division_id').order('name'),
-    supabase.from('wl_workouts').select('id, number, name, status, open_entry, combine_parts, heat_minutes, parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').order('number'),
-    supabase.from('wl_scores').select('part_id, team_id, value, tiebreak_value, capped, entries').eq('status', 'verified'),
+    Promise.resolve({ data: { points_method: event.points_method, custom_points: event.custom_points, lanes_per_heat: event.lanes_per_heat } }),
+    supabase.from('wl_divisions').select('id, name, sex, level, sort_order').eq('competition_id', event.id).order('sort_order'),
+    supabase.from('wl_teams').select('id, name, division_id').eq('competition_id', event.id).order('name'),
+    supabase.from('wl_workouts').select('id, number, name, status, open_entry, combine_parts, heat_minutes, parts:wl_workout_parts(*, part_movements:wl_part_movements!wl_part_movements_part_id_fkey(*))').eq('competition_id', event.id).order('number'),
+    supabase.from('wl_scores').select('part_id, team_id, value, tiebreak_value, capped, entries, team:wl_teams!inner(competition_id)').eq('status', 'verified').eq('team.competition_id', event.id),
   ])
 
   const candidates = (workouts ?? []).filter((w) => !w.open_entry)

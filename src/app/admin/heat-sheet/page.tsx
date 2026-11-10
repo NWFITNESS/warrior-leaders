@@ -1,4 +1,4 @@
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { HeatSheetView } from './sheet-view'
 
 export const metadata = { title: 'Heat times' }
@@ -12,12 +12,12 @@ type Div = { id: string; level: string; sex: string; sort_order: number }
 
 /** One-page summary of every event's heat times (no lanes / teams), for printing or the screen. */
 export default async function HeatSheet() {
-  const { supabase } = await requireStaff()
+  const { supabase, event } = await requireEvent()
   const [{ data: settings }, { data: workouts }, { data: heats }, { data: divisions }] = await Promise.all([
-    supabase.from('wl_competition_settings').select('name, event_date, venue').single(),
-    supabase.from('wl_workouts').select('id, number, name, status, open_entry, public_from, heat_minutes, parts:wl_workout_parts(time_cap_seconds, score_type, rounds)').order('number'),
-    supabase.from('wl_heats').select('id, workout_id, number, start_time, lanes:wl_lane_assignments(team:wl_teams(division_id))').order('number'),
-    supabase.from('wl_divisions').select('id, level, sex, sort_order').order('sort_order'),
+    Promise.resolve({ data: { name: event.short_name, event_date: event.start_date, venue: event.venue } }),
+    supabase.from('wl_workouts').select('id, number, name, status, open_entry, public_from, heat_minutes, parts:wl_workout_parts(time_cap_seconds, score_type, rounds)').eq('competition_id', event.id).order('number'),
+    supabase.from('wl_heats').select('id, workout_id, number, start_time, lanes:wl_lane_assignments(team:wl_teams(division_id)), workout:wl_workouts!inner(competition_id)').eq('workout.competition_id', event.id).order('number'),
+    supabase.from('wl_divisions').select('id, level, sex, sort_order').eq('competition_id', event.id).order('sort_order'),
   ])
   const divById = new Map((divisions ?? []).map((d: Div) => [d.id, d]))
   const date = settings?.event_date

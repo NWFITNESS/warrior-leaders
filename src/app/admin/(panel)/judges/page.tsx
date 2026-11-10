@@ -1,6 +1,6 @@
 import QRCode from 'qrcode'
-import { requireStaff } from '@/lib/auth'
-import type { Judge, Settings } from '@/lib/types'
+import { requireEvent } from '@/lib/event'
+import type { Judge } from '@/lib/types'
 import { JudgeRow } from './judge-row'
 import { saveJudge } from './actions'
 import { CopyLink } from './copy-link'
@@ -11,11 +11,11 @@ export const metadata = { title: 'Judges' }
 const JUDGE_URL = 'https://leaders.northernwarrior.co.uk/judge'
 
 export default async function JudgesPage() {
-  const { supabase } = await requireStaff()
+  const { supabase, event } = await requireEvent()
   const [{ data: judges }, { data: settings }, { data: workouts }, { data: scoreRows }, { data: claimRows }] = await Promise.all([
-    supabase.from('wl_judges').select('*').order('role').order('name').returns<Judge[]>(),
-    supabase.from('wl_competition_settings').select('judge_code, head_judge_code').single<Pick<Settings, 'judge_code' | 'head_judge_code'>>(),
-    supabase.from('wl_workouts').select('id, number, name').order('number'),
+    supabase.from('wl_judges').select('*').eq('competition_id', event.id).order('role').order('name').returns<Judge[]>(),
+    Promise.resolve({ data: { judge_code: event.judge_code, head_judge_code: event.head_judge_code } }),
+    supabase.from('wl_workouts').select('id, number, name').eq('competition_id', event.id).order('number'),
     supabase.from('wl_scores').select('id, part:wl_workout_parts(workout_id)'),
     supabase.from('wl_lane_assignments').select('id, heat:wl_heats(workout_id)').not('judge_id', 'is', null),
   ])

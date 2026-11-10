@@ -1,4 +1,4 @@
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { withDefaults, type LivePromo } from '@/lib/live-promo'
 import { PromoEditor } from './promo-editor'
 
@@ -6,8 +6,8 @@ export const metadata = { title: 'Big screen' }
 export const dynamic = 'force-dynamic'
 
 export default async function BigScreenPage() {
-  const { supabase } = await requireStaff()
-  const { data } = await supabase.from('wl_competition_settings').select('live_promo').single()
+  const { event } = await requireEvent()
+  const data = { live_promo: event.live_promo }
   return (
     <>
       <div className="spread">

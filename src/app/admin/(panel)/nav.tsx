@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
 
 const GROUPS: { title: string; items: { href: string; label: string }[] }[] = [
-  { title: 'Event', items: [{ href: '/admin', label: 'Overview' }] },
+  { title: 'Event', items: [{ href: '/admin', label: 'Overview' }, { href: '/admin/events', label: 'All events' }] },
   { title: 'Set up', items: [
     { href: '/admin/teams', label: 'Teams & athletes' },
     { href: '/admin/workouts', label: 'Workouts' },
@@ -22,7 +22,7 @@ const GROUPS: { title: string; items: { href: string; label: string }[] }[] = [
   ] },
   { title: 'System', items: [
     { href: '/admin/audit', label: 'Audit log' },
-    { href: '/admin/settings', label: 'Settings' },
+    { href: '/admin/settings', label: 'Event settings' },
   ] },
 ]
 const ALL = GROUPS.flatMap((g) => g.items)

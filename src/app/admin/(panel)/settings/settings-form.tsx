@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import type { PointsMethod, Settings } from '@/lib/types'
+import type { CompEvent, PointsMethod } from '@/lib/types'
 import { pointsFor } from '@/lib/points'
 import { saveSettings } from './actions'
 
@@ -18,7 +18,7 @@ const SAMPLE = [
   { team: 'Wall Ball Wizards', places: [3, 4, 4] },
 ]
 
-export function SettingsForm({ settings, largestDivision }: { settings: Settings; largestDivision: number }) {
+export function SettingsForm({ settings, largestDivision }: { settings: CompEvent; largestDivision: number }) {
   const [state, action, pending] = useActionState(saveSettings, {})
   const [method, setMethod] = useState<PointsMethod>(settings.points_method)
   const [custom, setCustom] = useState(settings.custom_points.join(', '))
@@ -34,17 +34,33 @@ export function SettingsForm({ settings, largestDivision }: { settings: Settings
   return (
     <form action={action} className="stack" style={{ gap: 20 }}>
       <section className="card stack">
-        <h2>Competition</h2>
-        <div className="grid-3">
-          <label className="field"><span>Platform name</span><input id="s-name" name="name" className="input" defaultValue={settings.name} /></label>
-          <label className="field"><span>Date</span><input id="s-date" name="event_date" type="date" className="input" defaultValue={settings.event_date} /></label>
-          <label className="field"><span>Venue</span><input id="s-venue" name="venue" className="input" defaultValue={settings.venue} /></label>
-        </div>
+        <h2>Event</h2>
         <label className="field">
-          <span>Competition name (used in emails)</span>
-          <input id="s-comp-name" name="competition_name" className="input" defaultValue={settings.competition_name} />
+          <span>Event name (used in emails and the admin)</span>
+          <input id="s-name" name="name" className="input" defaultValue={settings.name} required />
         </label>
-        <p className="small subtle">Emails lead with the competition name and the Northern Warrior Competitions logo; Warrior Leaders shows as “Powered by” at the bottom.</p>
+        <div className="grid-3">
+          <label className="field"><span>Name on the public site</span><input id="s-short" name="short_name" className="input" defaultValue={settings.short_name} /></label>
+          <label className="field"><span>Venue</span><input id="s-venue" name="venue" className="input" defaultValue={settings.venue} /></label>
+          <label className="field">
+            <span>Status</span>
+            <select id="s-status" name="status" className="input" defaultValue={settings.status}>
+              <option value="draft">Draft (setting up)</option>
+              <option value="live">Live</option>
+              <option value="finished">Finished</option>
+              <option value="archived">Archived</option>
+            </select>
+          </label>
+        </div>
+        <div className="grid-3">
+          <label className="field"><span>Start date</span><input id="s-start" name="start_date" type="date" className="input" defaultValue={settings.start_date ?? ''} required /></label>
+          <label className="field"><span>End date</span><input id="s-end" name="end_date" type="date" className="input" defaultValue={settings.end_date ?? ''} /></label>
+          <label className="field">
+            <span>Web address</span>
+            <input id="s-slug" name="slug" className="input mono" defaultValue={settings.slug} pattern="[a-z0-9]+(-[a-z0-9]+)*" required />
+          </label>
+        </div>
+        <p className="small subtle">One-day event: leave the end date blank or the same as the start. The web address is the last part of the event’s public link (used once public pages move under each event).</p>
       </section>
 
       <section className="card stack">

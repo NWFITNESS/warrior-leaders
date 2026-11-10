@@ -1,6 +1,6 @@
 'use server'
 
-import { requireStaff } from '@/lib/auth'
+import { requireEvent } from '@/lib/event'
 import { revalidatePath } from 'next/cache'
 import { audit } from '@/lib/audit'
 
@@ -14,15 +14,15 @@ interface Recipient { email: string; firstName: string; team: string; teamId: st
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 async function recipients(audience: string): Promise<Recipient[]> {
-  const { supabase } = await requireStaff()
-  let q = supabase.from('wl_teams').select('id, name, division_id, division:wl_divisions(name), athletes:wl_athletes(first_name, email, is_captain)')
+  const { supabase, event } = await requireEvent()
+  let q = supabase.from('wl_teams').select('id, name, division_id, division:wl_divisions(name), athletes:wl_athletes(first_name, email, is_captain)').eq('competition_id', event.id)
   if (audience.startsWith('division:')) q = q.eq('division_id', audience.slice(9))
   if (audience.startsWith('team:')) q = q.eq('id', audience.slice(5))
   const [{ data: teams }, { data: lanes }, { data: settings }, { data: workouts }] = await Promise.all([
     q,
     supabase.from('wl_lane_assignments').select('lane, team_id, heat:wl_heats(number, start_time, workout_id)'),
-    supabase.from('wl_competition_settings').select('competition_name').single(),
-    supabase.from('wl_workouts').select('id, number, name, open_entry, public_from').neq('status', 'draft').order('number'),
+    Promise.resolve({ data: { competition_name: event.name } }),
+    supabase.from('wl_workouts').select('id, number, name, open_entry, public_from').eq('competition_id', event.id).neq('status', 'draft').order('number'),
   ])
   type Lane = { lane: number; team_id: string; heat: { number: number; start_time: string | null; workout_id: string } }
   const londonTime = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })
@@ -133,16 +133,16 @@ async function sendOne(m: Message): Promise<{ id: string | null; error: string |
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 async function audienceLabel(audience: string) {
-  const { supabase } = await requireStaff()
+  const { supabase, event } = await requireEvent()
   if (audience === 'all') return 'All athletes'
   if (audience === 'captains') return 'Team captains'
-  if (audience.startsWith('division:')) return (await supabase.from('wl_divisions').select('name').eq('id', audience.slice(9)).single()).data?.name ?? 'Division'
-  if (audience.startsWith('team:')) return (await supabase.from('wl_teams').select('name').eq('id', audience.slice(5)).single()).data?.name ?? 'Team'
+  if (audience.startsWith('division:')) return (await supabase.from('wl_divisions').select('name').eq('competition_id', event.id).eq('id', audience.slice(9)).single()).data?.name ?? 'Division'
+  if (audience.startsWith('team:')) return (await supabase.from('wl_teams').select('name').eq('competition_id', event.id).eq('id', audience.slice(5)).single()).data?.name ?? 'Team'
   return audience
 }
 
 export async function sendEmail(draft: EmailDraft, mode: 'test' | 'all', files: EmailAttachment[] = []): Promise<{ ok?: boolean; sent?: number; failed?: number; error?: string }> {
-  const { supabase, actor } = await requireStaff()
+  const { supabase, actor, event } = await requireEvent()
   if (!resendKey()) return { error: 'Email isn’t switched on yet: add RESEND_API_KEY to the Vercel project.' }
   if (!draft.subject.trim() || !draft.body.trim()) return { error: 'Add a subject and a message.' }
   if (files.reduce((n, f) => n + f.size, 0) > MAX_ATTACHMENT_BYTES) return { error: 'Attachments are too big: keep them under 35 MB in total.' }
@@ -181,13 +181,14 @@ export async function sendEmail(draft: EmailDraft, mode: 'test' | 'all', files: 
   const sent = outcomes.filter((o) => !o.error).length
   const failed = outcomes.length - sent
   await supabase.from('wl_email_log').insert({
+    competition_id: event.id,
     actor, mode, audience: draft.audience, audience_label: mode === 'test' ? `Test to ${actor}` : await audienceLabel(draft.audience),
     subject: draft.subject, attachments: files.map((f) => ({ filename: f.filename, size: f.size })), recipients: outcomes, sent, failed,
   })
   revalidatePath('/admin/emails')
 
   if (mode === 'all') {
-    await audit(supabase, { actor, action: 'email.send', entity: 'email', reason: `${draft.subject} → ${sent} sent, ${failed} failed (${draft.audience})`, after: { audience: draft.audience, subject: draft.subject, sent, failed, attachments: files.map((f) => f.filename) } })
+    await audit(supabase, { competition_id: event.id, actor, action: 'email.send', entity: 'email', reason: `${draft.subject} → ${sent} sent, ${failed} failed (${draft.audience})`, after: { audience: draft.audience, subject: draft.subject, sent, failed, attachments: files.map((f) => f.filename) } })
   }
   if (!sent) return { error: outcomes[0]?.error ?? 'Sending failed.' }
   return { ok: true, sent, failed }
@@ -195,9 +196,9 @@ export async function sendEmail(draft: EmailDraft, mode: 'test' | 'all', files: 
 
 /** Ask Resend what happened to each email in a send (delivered, bounced…). Saved on the log entry. */
 export async function checkDelivery(logId: string): Promise<{ ok?: boolean; error?: string }> {
-  const { supabase } = await requireStaff()
+  const { supabase, event } = await requireEvent()
   if (!resendKey()) return { error: 'Email isn’t switched on.' }
-  const { data: log } = await supabase.from('wl_email_log').select('recipients').eq('id', logId).single()
+  const { data: log } = await supabase.from('wl_email_log').select('recipients').eq('competition_id', event.id).eq('id', logId).single()
   if (!log) return { error: 'Log entry not found.' }
   const recips = log.recipients as (Outcome & { last_event?: string; checked_at?: string })[]
   for (const [i, r] of recips.entries()) {
