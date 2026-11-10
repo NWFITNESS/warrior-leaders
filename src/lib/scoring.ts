@@ -187,6 +187,36 @@ export function chipperTapEntries(part: Pick<WorkoutPart, 'part_movements'>, sex
   return { kind: 'max_reps', reps: next, started_at: startedAt, marks }
 }
 
+/** A typed total on a chipper: keeps the clock start and the finish times the new total still reaches
+ *  (so correcting the count doesn't throw away the tiebreak). */
+export function chipperSetTotal(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, e: RepsEntries, reps: number | null): RepsEntries {
+  const reached = new Set<string>()
+  let end = 0
+  for (const m of part.part_movements) {
+    const need = repsFor(m, sex)
+    if (!need) break
+    end += need
+    if ((reps ?? 0) >= end) reached.add(m.id!)
+  }
+  return { ...e, kind: 'max_reps', reps, marks: (e.marks ?? []).filter((x) => reached.has(x.movement_id)) }
+}
+
+/** Reps before the open-ended last movement of a chipper (e.g. 3 rounds = 126 before the handstand walk). */
+export function chipperFixedReps(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex) {
+  let n = 0
+  for (const m of part.part_movements) {
+    const need = repsFor(m, sex)
+    if (!need) return n
+    n += need
+  }
+  return n
+}
+
+/** Distance movements are named "… (m)": each rep is a metre. */
+export function isMetres(m: Pick<Movement, 'name'> | undefined) {
+  return !!m && /\(m\)/i.test(m.name ?? '')
+}
+
 /** One tap on a chipper: +step on the current movement (never past its target), −step back. */
 export function chipperTap(part: Pick<WorkoutPart, 'part_movements'>, sex: Sex, total: number, dir: 1 | -1) {
   if (dir > 0) {

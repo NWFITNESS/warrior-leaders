@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getDraft, putDraft, queue, type Draft, type JudgeEvent, type JudgePart, type Lane, judgeNow, syncHeatStart } from '@/lib/judge-client'
 import {
-  amrapPosition, amrapTap, autoTiebreak, chipperPosition, chipperTapEntries, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
+  amrapPosition, amrapTap, autoTiebreak, chipperFixedReps, chipperPosition, chipperSetTotal, chipperTapEntries, isMetres, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
 } from '@/lib/scoring'
 import { loadForSex, parseCap, partTitle, resolvePart, tiebreakRule } from '@/lib/types'
@@ -141,14 +141,40 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
               const chipper = part.part_movements.length > 1 && part.part_movements.some((m) => repsFor(m, sex) > 0)
               const pos = chipper ? chipperPosition(part, sex, total) : null
               return pos ? (
-                <TapPad what={`Total ${total} · ${pos.movement.name}`} count={pos.done} need={pos.need ?? undefined} step={tapStep(pos.movement)}
-                  onTap={(dir) => { const now = judgeNow(); if (dir > 0 && clockStart == null) setClockStart((draft.entries.kind === 'max_reps' && draft.entries.started_at) || now); tapEntries((e) => e.kind === 'max_reps' ? { entries: chipperTapEntries(part, sex, e, dir, now, clockStart) } : null) }} />
+                <>
+                  {isMetres(pos.movement) && <div className="j-banner">Count <b>metres</b>, not lengths: 1 tap = 1 metre. A 3m length is 3 taps.</div>}
+                  <TapPad what={`Total ${total} · ${pos.movement.name}`} count={pos.done} need={pos.need ?? undefined} step={tapStep(pos.movement)} unit={isMetres(pos.movement) ? 'm' : undefined}
+                    onTap={(dir) => { const now = judgeNow(); if (dir > 0 && clockStart == null) setClockStart((draft.entries.kind === 'max_reps' && draft.entries.started_at) || now); tapEntries((e) => e.kind === 'max_reps' ? { entries: chipperTapEntries(part, sex, e, dir, now, clockStart) } : null) }} />
+                </>
               ) : (
-                <TapPad what="Total reps" count={total} step={tapStep(part.part_movements[0])}
-                  onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'max_reps' ? { entries: { kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null) }} />
+                <TapPad what="Total reps" count={total} step={tapStep(part.part_movements[0])} unit={isMetres(part.part_movements[0]) ? 'm' : undefined}
+                  onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'max_reps' ? { entries: { ...e, kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null) }} />
               )
             })()}
-            <Stepper label="Total reps" value={draft.entries.reps} onChange={(v) => setEntries({ kind: 'max_reps', reps: v }, [ev('input', { reps: v })])} />
+            {(() => {
+              // Typing a number: it's the total for the WHOLE workout, not just the last movement
+              const e = draft.entries
+              if (e.kind !== 'max_reps') return null
+              const chipper = part.part_movements.length > 1 && part.part_movements.some((m) => repsFor(m, sex) > 0)
+              const fixed = chipper ? chipperFixedReps(part, sex) : 0
+              const last = part.part_movements.at(-1)
+              const short = chipper && e.reps != null && e.reps > 0 && e.reps < fixed && !(e.marks ?? []).length
+              return (
+                <>
+                  <Stepper label={chipper ? 'Total reps for the whole workout' : 'Total reps'} value={e.reps}
+                    onChange={(v) => setEntries(chipperSetTotal(part, sex, e, v), [ev('input', { reps: v })])} />
+                  {chipper && <p className="j-note">Tapping is best: it records the tiebreak. If you type, include all {fixed} reps before {last?.name.replace(/ ·.*$/, '') ?? 'the last movement'}.</p>}
+                  {short && (
+                    <div className="j-panel warn">
+                      <p className="j-note">That’s less than the {fixed} reps before {last?.name.replace(/ ·.*$/, '') ?? 'the last movement'}. If the team finished those, their total is {fixed} + {e.reps} = <b>{fixed + e.reps!}</b>.</p>
+                      <button type="button" className="j-primary" onClick={() => setEntries(chipperSetTotal(part, sex, e, fixed + e.reps!), [ev('input', { reps: fixed + e.reps!, added_fixed: fixed })])}>
+                        Make it {fixed + e.reps!}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </>
         )}
         {draft.entries.kind === 'max_load' && (
@@ -240,6 +266,10 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
   const now = useNow(running)
   const elapsed = round?.started_at ? (now - round.started_at) / 1000 : 0
   const [confirmReset, setConfirmReset] = useState(false)
+  // The confirm button appears where Restart was, so a double tap would hit both: ignore it for 0.8s
+  const armedAt = useRef(0)
+  const askReset = () => { armedAt.current = Date.now(); setConfirmReset(true) }
+  const sure = () => Date.now() - armedAt.current > 800
 
   const update = (r: RoundEntry, events: JudgeEvent[]) =>
     onChange({ kind: 'for_time', rounds: entries.rounds.map((x, i) => (i === ri ? r : x)) }, events)
@@ -287,11 +317,12 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
           ) : null })()}
           {confirmReset ? (
             <>
-              <button type="button" className="j-tool danger" onClick={() => { setConfirmReset(false); const last = entries.rounds.length - 1; onChange({ kind: 'for_time', rounds: entries.rounds.map((r, i) => (i === last ? { started_at: null, ticks: [], capped: false, partial_reps: null } : r)) }, [ev('reset_round', { round: last + 1 })]) }}>Wipe and redo</button>
+              <p className="j-note" style={{ flexBasis: '100%' }}>This wipes every tick and time in the {multi ? 'round' : 'workout'}. Only do it if the team is redoing it.</p>
+              <button type="button" className="j-tool danger" onClick={() => { if (!sure()) return; setConfirmReset(false); const last = entries.rounds.length - 1; onChange({ kind: 'for_time', rounds: entries.rounds.map((r, i) => (i === last ? { started_at: null, ticks: [], capped: false, partial_reps: null } : r)) }, [ev('reset_round', { round: last + 1 })]) }}>Wipe and redo</button>
               <button type="button" className="j-tool" onClick={() => setConfirmReset(false)}>Cancel</button>
             </>
           ) : (
-            <button type="button" className="j-tool danger" onClick={() => setConfirmReset(true)}>Redo last {multi ? 'round' : 'attempt'}</button>
+            <button type="button" className="j-tool danger" onClick={askReset}>Redo last {multi ? 'round' : 'attempt'}</button>
           )}
         </div>
       </>
@@ -343,7 +374,12 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
                 </div>
                 {tick
                   ? <span className="j-split">{formatTime(tick.at)}</span>
-                  : cur && <button type="button" className="j-check" aria-label={`${m.name} done`} onClick={() => tickNow(m)}>✓ Done</button>}
+                  : cur && (() => {
+                    // just ticked the previous movement: Done waits 3s so a follow-up tap can't land on it
+                    const prev = round.ticks.at(-1)
+                    const wait = prev ? 3 - (elapsed - prev.at) : 0
+                    return <button type="button" className="j-check" aria-label={`${m.name} done`} disabled={wait > 0} style={wait > 0 ? { opacity: 0.4 } : undefined} onClick={() => tickNow(m)}>{wait > 0 ? 'Wait…' : '✓ Done'}</button>
+                  })()}
               </div>
               {!tick && (cur || !round.started_at) && <Standards text={m.standards} collapsible className="std" />}
               {(cur || (!round.started_at && !round.capped && i === nextMv)) && reps > 0 && <TapPad count={round.reps_done ?? 0} need={reps} step={tapStep(m)} onTap={onTap} />}
@@ -377,11 +413,12 @@ function ForTime({ part, sex, entries, loadFor, onChange, onTap }: {
         )}
         {round.started_at && (confirmReset ? (
           <>
-            <button type="button" className="j-tool danger" onClick={() => { setConfirmReset(false); update({ started_at: null, ticks: [], capped: false, partial_reps: null, confirmed: false, reps_done: 0 }, [ev('reset_round', { round: ri + 1 })]) }}>Confirm restart</button>
+            <p className="j-note" style={{ flexBasis: '100%' }}>This stops the clock and wipes every tick{multi ? ' in this round' : ''}. Only do it for a false start.</p>
+            <button type="button" className="j-tool danger" onClick={() => { if (!sure()) return; setConfirmReset(false); update({ started_at: null, ticks: [], capped: false, partial_reps: null, confirmed: false, reps_done: 0 }, [ev('reset_round', { round: ri + 1 })]) }}>Confirm restart</button>
             <button type="button" className="j-tool" onClick={() => setConfirmReset(false)}>Cancel</button>
           </>
         ) : (
-          <button type="button" className="j-tool danger" onClick={() => setConfirmReset(true)}>Restart{multi ? ' round' : ''}</button>
+          <button type="button" className="j-tool danger" onClick={askReset}>Restart{multi ? ' round' : ''}</button>
         ))}
       </div>
     </>
@@ -507,8 +544,9 @@ function DecimalInput({ value, onChange, label, placeholder, className = 'input'
 }
 
 /** Rep counter + tap buttons: each tap counts `step` reps. Feeds the live race screen. */
-function TapPad({ what, count, need, step, onTap }: { what?: string; count: number; need?: number; step: number; onTap: (dir: 1 | -1) => void }) {
+function TapPad({ what, count, need, step, unit, onTap }: { what?: string; count: number; need?: number; step: number; unit?: 'm'; onTap: (dir: 1 | -1) => void }) {
   const left = need != null ? Math.max(0, need - count) : null
+  const word = unit === 'm' ? 'm' : step === 1 ? 'rep' : 'reps'
   return (
     <div className="j-tap">
       <div className="j-count" aria-live="polite">
@@ -519,9 +557,9 @@ function TapPad({ what, count, need, step, onTap }: { what?: string; count: numb
         </span>
       </div>
       <div className="j-tap-btns">
-        <button type="button" className="minus" aria-label={`Take off ${step} ${step === 1 ? 'rep' : 'reps'}`} disabled={count <= 0 && need != null} onClick={() => onTap(-1)}>−{step}</button>
-        <button type="button" className="plus" aria-label={`Add ${step} ${step === 1 ? 'rep' : 'reps'}`} onClick={() => { navigator.vibrate?.(15); onTap(1) }}>
-          +{step} {step === 1 ? 'rep' : 'reps'}
+        <button type="button" className="minus" aria-label={`Take off ${step} ${unit === 'm' ? (step === 1 ? 'metre' : 'metres') : word}`} disabled={count <= 0 && need != null} onClick={() => onTap(-1)}>−{step}</button>
+        <button type="button" className="plus" aria-label={`Add ${step} ${unit === 'm' ? (step === 1 ? 'metre' : 'metres') : word}`} onClick={() => { navigator.vibrate?.(15); onTap(1) }}>
+          +{step} {word}
         </button>
       </div>
     </div>
