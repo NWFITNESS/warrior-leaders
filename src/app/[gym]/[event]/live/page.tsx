@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { eventFromParams, type EventParams } from '@/lib/public-event'
 
 export const metadata = { title: 'Live' }
+export const dynamic = 'force-dynamic' // reads the host for the QR code
 
 // Big screen: dog race of the heat on the floor (left) + heat times (right).
 //   /live              split screen

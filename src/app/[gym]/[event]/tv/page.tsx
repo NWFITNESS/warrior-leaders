@@ -5,7 +5,7 @@ import { TvRotator } from './tv-rotator'
 import { headers } from 'next/headers'
 import { eventFromParams, type EventParams } from '@/lib/public-event'
 
-export const revalidate = 15
+export const dynamic = 'force-dynamic' // reads the host for the address on screen
 export const metadata = { title: 'TV' }
 
 export default async function TvPage({ params }: { params: EventParams }) {
