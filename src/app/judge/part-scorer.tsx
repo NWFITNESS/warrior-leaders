@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { getDraft, putDraft, queue, type Draft, type JudgeEvent, type JudgePart, type Lane, judgeNow, syncHeatStart } from '@/lib/judge-client'
+import { getDraft, putDraft, queue, type Draft, type JudgeEvent, type JudgePart, type Lane, judgeNow, syncHeatStart, fetchHeatClock } from '@/lib/judge-client'
 import {
   amrapPosition, amrapTap, autoTiebreak, chipperFixedReps, chipperPosition, chipperSetTotal, chipperTapEntries, isMetres, computeScore, forTimeTap, emptyEntries, formatTime, loadComplete, repsFor, repsPerRound, roundValue, tapStep,
   type Entries, type ForTimeEntries, type LoadEntries, type RoundEntry, type Sex,
@@ -51,13 +51,21 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
   const timeUp = clockStart != null && part.time_cap_seconds != null && (clockNow - clockStart) / 1000 >= part.time_cap_seconds
   const [handEntry, setHandEntry] = useState(false)
 
-  // ── Heat clock sync: the first judge in a heat to start sets the heat's start; a lane started
-  // within 5 s of it snaps to it (ticks shift with it), so every lane runs on one clock.
+  // ── Heat clock: every lane in a heat runs on ONE clock, the first judge's start.
+  //  • A judge who starts late (or whose first tap starts the clock) is moved back to the heat's start;
+  //    every time they've recorded shifts with it.
+  //  • A lane that hasn't started yet starts itself as soon as any judge in the heat starts.
+  //  • A judge who wiped the round and starts again (a re-run) sets a new heat start instead.
   // Side events start whenever, so they're left alone.
   const [syncNote, setSyncNote] = useState<string | null>(null)
   const synced = useRef(new Set<string>())
+  const resetAt = useRef<Record<number, number>>({}) // round → when this judge last wiped it
+  const capMs = (part.time_cap_seconds ?? 20 * 60) * 1000
+  const note = (text: string) => { setSyncNote(text); window.setTimeout(() => setSyncNote(null), 4000) }
+  const heatSynced = !preview && !lane.workout.open_entry
+
   useEffect(() => {
-    if (preview || lane.workout.open_entry) return
+    if (!heatSynced) return
     const e = draft.entries
     const starts = e.kind === 'for_time'
       ? e.rounds.map((r, i) => ({ round: i + 1, ms: r.started_at })).filter((x): x is { round: number; ms: number } => x.ms != null)
@@ -66,24 +74,77 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
       const key = `${st.round}:${st.ms}`
       if (synced.current.has(key)) continue
       synced.current.add(key)
-      if (Math.abs(judgeNow() - st.ms) > 20_000) continue // an old start restored after a reload
-      void syncHeatStart(lane.lane_assignment_id, part.id, st.round, st.ms).then((heatMs) => {
+      if (judgeNow() - st.ms > capMs || st.ms - judgeNow() > 20_000) continue // an old start restored after a reload
+      const restart = (resetAt.current[st.round] ?? Infinity) < st.ms
+      void syncHeatStart(lane.lane_assignment_id, part.id, st.round, st.ms, restart).then((heatMs) => {
         if (heatMs == null) return
         const delta = st.ms - heatMs // > 0: this judge started after the heat did
-        if (Math.abs(delta) < 50 || Math.abs(delta) > 5000) return
+        if (Math.abs(delta) < 50) return
+        if (delta > capMs || delta < -5000) return // not the same run
         synced.current.add(`${st.round}:${heatMs}`)
         tapEntries((cur) => shiftStart(cur, st.round, st.ms, heatMs))
         if (draftRef.current.entries.kind === 'max_reps') setClockStart(heatMs)
-        setSyncNote(`Clock synced with the heat (${delta > 0 ? '+' : '−'}${(Math.abs(delta) / 1000).toFixed(1)} s)`)
-        window.setTimeout(() => setSyncNote(null), 4000)
+        note(`Clock synced with the heat (${delta > 0 ? '+' : '−'}${(Math.abs(delta) / 1000).toFixed(1)} s)`)
       })
     }
   }, [draft.entries]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Not started yet? Watch the heat: when another judge starts, this lane starts on the same clock.
+  const e0 = draft.entries
+  const waitRound = (() => {
+    if (!heatSynced || locked || submitted) return null
+    if (e0.kind === 'for_time') {
+      const movements = part.part_movements
+      const ri = e0.rounds.findIndex((r) => !(movements.length && r.ticks.length >= movements.length) && !(r.capped && r.partial_reps != null && r.confirmed))
+      const r = e0.rounds[ri]
+      return r && !r.started_at && !r.ticks.length ? { round: ri + 1, after: ri > 0 ? e0.rounds[ri - 1].started_at ?? 0 : 0 } : null
+    }
+    if (e0.kind === 'max_reps' && part.time_cap_seconds != null) return clockStart == null && !e0.started_at ? { round: 1, after: 0 } : null
+    return null
+  })()
+  useEffect(() => {
+    if (!waitRound) return
+    let stop = false
+    const check = async () => {
+      const starts = await fetchHeatClock(lane.lane_assignment_id, part.id)
+      const ms = starts?.[waitRound.round]
+      if (stop || ms == null) return
+      const age = judgeNow() - ms
+      if (age < -5000 || age > capMs) return // not this run
+      if (ms <= waitRound.after) return // left over from an earlier round
+      if ((resetAt.current[waitRound.round] ?? 0) > ms) return // this judge wiped it after that start: wait for the re-run
+      synced.current.add(`${waitRound.round}:${ms}`)
+      tapEntries((cur) => {
+        if (cur.kind === 'for_time') {
+          const r = cur.rounds[waitRound.round - 1]
+          if (!r || r.started_at || r.ticks.length) return null
+          return { entries: { ...cur, rounds: cur.rounds.map((x, i) => (i === waitRound.round - 1 ? { ...x, started_at: ms } : x)) }, events: [ev('start', { round: waitRound.round, via: 'heat' })] }
+        }
+        if (cur.kind === 'max_reps' && !cur.started_at) return { entries: { ...cur, started_at: ms }, events: [ev('start', { round: 1, via: 'heat' })] }
+        return null
+      })
+      if (draftRef.current.entries.kind === 'max_reps') setClockStart(ms)
+      navigator.vibrate?.([60, 40, 60])
+      note(`Heat started ${Math.max(0, Math.round(age / 1000))} s ago: clock running`)
+    }
+    void check()
+    const id = window.setInterval(() => void check(), 1500)
+    return () => { stop = true; window.clearInterval(id) }
+  }, [waitRound?.round, waitRound?.after]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Max reps: the Start button writes the start into the score too, so it syncs with the heat
+  const setMaxRepsClock = (v: number | null) => {
+    setClockStart(v)
+    if (draftRef.current.entries.kind !== 'max_reps') return
+    if (v == null) { resetAt.current[1] = judgeNow(); commit({ entries: { ...draftRef.current.entries, started_at: null } }, [ev('reset_clock')]); return }
+    if (!draftRef.current.entries.started_at) commit({ entries: { ...draftRef.current.entries, started_at: v } }, [ev('start', { round: 1 })])
+  }
 
   function commit(next: Partial<Draft>, events: JudgeEvent[] = [], status: Draft['status'] = 'draft') {
     // a changed score needs signing again
     const resign = next.entries && next.entries !== draftRef.current.entries ? { signature: '' } : {}
     const d: Draft = { ...draftRef.current, ...next, ...resign, status, updatedAt: Date.now() }
+    for (const x of events) if (x.kind === 'reset_round') resetAt.current[Number(x.payload.round) || 1] = judgeNow()
     draftRef.current = d
     setDraft(d)
     if (preview) return
@@ -148,7 +209,7 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
             return (
               <>
                 <MovementList part={part} sex={sex} loadFor={loadFor} />
-                <CapClock part={part} start={clockStart} setStart={setClockStart} />
+                <CapClock part={part} start={clockStart} setStart={setMaxRepsClock} />
                 <TapPad what="Total reps" count={total} step={tapStep(part.part_movements[0])} unit={isMetres(part.part_movements[0]) ? 'm' : undefined}
                   onTap={(dir) => { startClock(dir); tapEntries((x) => x.kind === 'max_reps' ? { entries: { ...x, kind: 'max_reps', reps: Math.max(0, (x.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null) }} />
                 <Stepper label="Total reps" value={e.reps} onChange={(v) => setEntries({ ...e, kind: 'max_reps', reps: v }, [ev('input', { reps: v })])} />
@@ -166,7 +227,7 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
           const short = total > 0 && total < fixed && !(e.marks ?? []).length
           return (
             <>
-              <CapClock part={part} start={clockStart} setStart={setClockStart} />
+              <CapClock part={part} start={clockStart} setStart={setMaxRepsClock} />
               <ol className="j-list">
                 {part.part_movements.map((m) => {
                   const mark = (e.marks ?? []).find((x) => x.movement_id === m.id)

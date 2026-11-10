@@ -77,12 +77,21 @@ export async function syncClock() {
 }
 
 /** Tell the server this lane started its clock; returns the heat's official start (the first judge's), or null offline. */
-export async function syncHeatStart(laneId: string, partId: string, round: number, startedMs: number): Promise<number | null> {
+export async function syncHeatStart(laneId: string, partId: string, round: number, startedMs: number, restart = false): Promise<number | null> {
   const token = getToken()
   if (!token) return null
-  const { data, error } = await db().rpc('wl_judge_heat_start', { p_token: token, p_lane: laneId, p_part: partId, p_round: round, p_started_ms: Math.round(startedMs) })
+  const { data, error } = await db().rpc('wl_judge_heat_start', { p_token: token, p_lane: laneId, p_part: partId, p_round: round, p_started_ms: Math.round(startedMs), p_restart: restart })
   if (error || !data?.synced || data.heat_started_ms == null) return null
   return Number(data.heat_started_ms)
+}
+
+/** The heat's official start for each round of this part ({ 1: ms, 2: ms }), or null offline. */
+export async function fetchHeatClock(laneId: string, partId: string): Promise<Record<number, number> | null> {
+  const token = getToken()
+  if (!token) return null
+  const { data, error } = await db().rpc('wl_judge_heat_clock', { p_token: token, p_lane: laneId, p_part: partId })
+  if (error || !data?.starts) return null
+  return Object.fromEntries(Object.entries(data.starts as Record<string, number>).map(([k, v]) => [Number(k), Number(v)]))
 }
 export const getCachedAssignments = () => read<Assignments | null>(CACHE, null)
 
