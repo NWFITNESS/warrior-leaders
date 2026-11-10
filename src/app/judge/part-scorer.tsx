@@ -46,6 +46,10 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
   const [clockStart, setClockStart] = useState<number | null>(() => (draft.entries.kind === 'max_reps' ? draft.entries.started_at ?? null : null))
   const startClock = (dir: 1 | -1) => { if (dir > 0 && clockStart == null && part.time_cap_seconds != null) setClockStart(judgeNow()) }
   const auto = autoTiebreak(part, sex, draft.entries)
+  // max reps: the typed total only opens once time's up (or the judge says the phone failed)
+  const clockNow = useNow(clockStart != null)
+  const timeUp = clockStart != null && part.time_cap_seconds != null && (clockNow - clockStart) / 1000 >= part.time_cap_seconds
+  const [handEntry, setHandEntry] = useState(false)
 
   // ── Heat clock sync: the first judge in a heat to start sets the heat's start; a lane started
   // within 5 s of it snaps to it (ticks shift with it), so every lane runs on one clock.
@@ -131,52 +135,88 @@ export function PartScorer({ lane, part: rawPart, preview = false }: { lane: Lan
           <Amrap part={part} sex={sex} loadFor={loadFor} entries={draft.entries} onChange={setEntries} clock={<CapClock part={part} start={clockStart} setStart={setClockStart} />}
             onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'amrap' ? { entries: { kind: 'amrap', ...amrapTap(part, sex, e.rounds ?? 0, e.reps ?? 0, dir) } } : null) }} />
         )}
-        {draft.entries.kind === 'max_reps' && (
-          <>
-            <MovementList part={part} sex={sex} loadFor={loadFor} />
-            <CapClock part={part} start={clockStart} setStart={setClockStart} />
-            {(() => {
-              // several movements in order (e.g. 3 rounds then max handstand walk): follow where the team is
-              const total = draft.entries.reps ?? 0
-              const chipper = part.part_movements.length > 1 && part.part_movements.some((m) => repsFor(m, sex) > 0)
-              const pos = chipper ? chipperPosition(part, sex, total) : null
-              return pos ? (
-                <>
-                  {isMetres(pos.movement) && <div className="j-banner">Count <b>metres</b>, not lengths: 1 tap = 1 metre. A 3m length is 3 taps.</div>}
-                  <TapPad what={`Total ${total} · ${pos.movement.name}`} count={pos.done} need={pos.need ?? undefined} step={tapStep(pos.movement)} unit={isMetres(pos.movement) ? 'm' : undefined}
-                    onTap={(dir) => { const now = judgeNow(); if (dir > 0 && clockStart == null) setClockStart((draft.entries.kind === 'max_reps' && draft.entries.started_at) || now); tapEntries((e) => e.kind === 'max_reps' ? { entries: chipperTapEntries(part, sex, e, dir, now, clockStart) } : null) }} />
-                </>
-              ) : (
+        {draft.entries.kind === 'max_reps' && (() => {
+          const e = draft.entries
+          const total = e.reps ?? 0
+          const chipper = part.part_movements.length > 1 && part.part_movements.some((m) => repsFor(m, sex) > 0)
+          const tapChipper = (dir: 1 | -1) => {
+            const now = judgeNow()
+            if (dir > 0 && clockStart == null) setClockStart(e.started_at || now)
+            tapEntries((x) => x.kind === 'max_reps' ? { entries: chipperTapEntries(part, sex, x, dir, now, clockStart) } : null)
+          }
+          if (!chipper) {
+            return (
+              <>
+                <MovementList part={part} sex={sex} loadFor={loadFor} />
+                <CapClock part={part} start={clockStart} setStart={setClockStart} />
                 <TapPad what="Total reps" count={total} step={tapStep(part.part_movements[0])} unit={isMetres(part.part_movements[0]) ? 'm' : undefined}
-                  onTap={(dir) => { startClock(dir); tapEntries((e) => e.kind === 'max_reps' ? { entries: { ...e, kind: 'max_reps', reps: Math.max(0, (e.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null) }} />
-              )
-            })()}
-            {(() => {
-              // Typing a number: it's the total for the WHOLE workout, not just the last movement
-              const e = draft.entries
-              if (e.kind !== 'max_reps') return null
-              const chipper = part.part_movements.length > 1 && part.part_movements.some((m) => repsFor(m, sex) > 0)
-              const fixed = chipper ? chipperFixedReps(part, sex) : 0
-              const last = part.part_movements.at(-1)
-              const short = chipper && e.reps != null && e.reps > 0 && e.reps < fixed && !(e.marks ?? []).length
-              return (
-                <>
-                  <Stepper label={chipper ? 'Total reps for the whole workout' : 'Total reps'} value={e.reps}
+                  onTap={(dir) => { startClock(dir); tapEntries((x) => x.kind === 'max_reps' ? { entries: { ...x, kind: 'max_reps', reps: Math.max(0, (x.reps ?? 0) + dir * tapStep(part.part_movements[0])) } } : null) }} />
+                <Stepper label="Total reps" value={e.reps} onChange={(v) => setEntries({ ...e, kind: 'max_reps', reps: v }, [ev('input', { reps: v })])} />
+              </>
+            )
+          }
+          // Chipper (e.g. 3 rounds, then max handstand walk): laid out like a for-time workout.
+          // The current movement is highlighted with the tap pad under it; typing opens only at time's up.
+          const pos = chipperPosition(part, sex, total)
+          const fixed = chipperFixedReps(part, sex)
+          const last = part.part_movements.at(-1)
+          const lastName = last?.name.replace(/ ·.*$/, '') ?? 'the last movement'
+          const typedBefore = total > 0 && !(e.marks ?? []).length && clockStart == null // an older hand-typed score
+          const canType = timeUp || handEntry || typedBefore
+          const short = total > 0 && total < fixed && !(e.marks ?? []).length
+          return (
+            <>
+              <CapClock part={part} start={clockStart} setStart={setClockStart} />
+              <ol className="j-list">
+                {part.part_movements.map((m) => {
+                  const mark = (e.marks ?? []).find((x) => x.movement_id === m.id)
+                  const cur = pos?.movement.id === m.id && !timeUp
+                  const reps = repsFor(m, sex)
+                  const load = loadFor(m)
+                  return (
+                    <li key={m.id} className={`j-item${cur ? ' cur' : ''}${mark ? ' done' : ''}`}>
+                      <div className="j-item-row">
+                        <span className="j-idx" aria-hidden>{mark ? '✓' : m.sort_order + 1}</span>
+                        <div className="j-item-main">
+                          <div className="j-item-name">{reps > 0 && <b>{reps}</b>} {m.name}</div>
+                          {load && <div className="j-item-meta">{load}</div>}
+                        </div>
+                        {mark && <span className="j-split">{formatTime(mark.at)}</span>}
+                      </div>
+                      {cur && <Standards text={m.standards} collapsible className="std" />}
+                      {cur && isMetres(m) && !reps && <div className="j-banner">Count <b>metres</b>, not lengths: 1 tap = 1 metre. A 3m length is 3 taps.</div>}
+                      {cur && pos && (
+                        <TapPad what={`Total ${total}`} count={pos.done} need={pos.need ?? undefined} step={tapStep(m)} unit={isMetres(m) ? 'm' : undefined} onTap={tapChipper} />
+                      )}
+                    </li>
+                  )
+                })}
+              </ol>
+              {canType ? (
+                <section className={`j-panel${timeUp ? ' warn' : ''}`}>
+                  {timeUp && <h3>Time’s up · check the total</h3>}
+                  <Stepper label="Total reps for the whole workout" value={e.reps}
                     onChange={(v) => setEntries(chipperSetTotal(part, sex, e, v), [ev('input', { reps: v })])} />
-                  {chipper && <p className="j-note">Tapping is best: it records the tiebreak. If you type, include all {fixed} reps before {last?.name.replace(/ ·.*$/, '') ?? 'the last movement'}.</p>}
+                  <p className="j-note">This is everything: all {fixed} reps before {lastName}, plus their {lastName} {last && isMetres(last) ? 'metres' : 'reps'}.</p>
                   {short && (
                     <div className="j-panel warn">
-                      <p className="j-note">That’s less than the {fixed} reps before {last?.name.replace(/ ·.*$/, '') ?? 'the last movement'}. If the team finished those, their total is {fixed} + {e.reps} = <b>{fixed + e.reps!}</b>.</p>
-                      <button type="button" className="j-primary" onClick={() => setEntries(chipperSetTotal(part, sex, e, fixed + e.reps!), [ev('input', { reps: fixed + e.reps!, added_fixed: fixed })])}>
-                        Make it {fixed + e.reps!}
+                      <p className="j-note">That’s less than the {fixed} reps before {lastName}. If the team finished those, their total is {fixed} + {total} = <b>{fixed + total}</b>.</p>
+                      <button type="button" className="j-primary" onClick={() => setEntries(chipperSetTotal(part, sex, e, fixed + total), [ev('input', { reps: fixed + total, added_fixed: fixed })])}>
+                        Make it {fixed + total}
                       </button>
                     </div>
                   )}
-                </>
-              )
-            })()}
-          </>
-        )}
+                </section>
+              ) : (
+                <div className="j-toolbar">
+                  <button type="button" className="j-tool" onClick={() => { if (window.confirm('Only type the total if the phone or clock failed. Typing skips the tiebreak times. Carry on?')) { setHandEntry(true); commit({}, [ev('hand_entry')]) } }}>
+                    Phone or clock problem? Type the total
+                  </button>
+                </div>
+              )}
+            </>
+          )
+        })()}
         {draft.entries.kind === 'max_load' && (
           <MaxLoad part={part} lane={lane} loadFor={loadFor} entries={draft.entries} onChange={setEntries} clock={<CapClock part={part} start={clockStart} setStart={setClockStart} />} />
         )}
